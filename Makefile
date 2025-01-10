@@ -4,7 +4,7 @@ DOCS_PATH 	= docs
 PDOC		= pdoc -d google --math
 PYTHON		= python3.12
 
-RUFF_EXCL   = --exclude '*.ipynb' --exclude 'old/'
+RUFF_EXCL   = --exclude '*.ipynb' --exclude 'old/' --exclude 'playground.py'
 
 .ONESHELL:
 

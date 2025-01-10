@@ -179,3 +179,7 @@ cython_debug/
 # VSCode
 *.code-workspace
 .vscode/
+
+# Playground
+playground.py
+playground.ipynb
