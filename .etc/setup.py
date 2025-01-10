@@ -13,10 +13,9 @@ with open("README.md", "r", encoding="utf-8") as f:
 with open("requirements.txt", "r", encoding="utf-8") as f:
     requirements = f.read().split()
 
-packages = (
-    [name]
-    + [name + "." + p for p in setuptools.find_packages(where="./" + name)]
-)
+packages = [name] + [
+    name + "." + p for p in setuptools.find_packages(where="./" + name)
+]
 
 setuptools.setup(
     author="Cédric Ho Thanh",
