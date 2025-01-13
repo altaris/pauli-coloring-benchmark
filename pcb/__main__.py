@@ -51,6 +51,23 @@ def build_index(hamlib_url: str, output_csv: TextIO) -> None:
     logging.info("Done in: {}", datetime.now() - start)
 
 
+@main.command()
+@click.argument("index_csv", type=click.File("r"))
+@click.argument("output_csv", type=click.File("w"))
+@click.option("--prefix", type=str, default="")
+@click.option("--n-trials", type=int, default=10)
+def run_benchmark(
+    index_csv: TextIO, output_csv: TextIO, prefix: str, n_trials: int
+) -> None:
+    import pandas as pd
+
+    from .benchmark import benchmark
+
+    index = pd.read_csv(index_csv)
+    df = benchmark(index, n_trials=n_trials, prefix=prefix)
+    df.to_csv(output_csv, index=False)
+
+
 # pylint: disable=no-value-for-parameter
 if __name__ == "__main__":
     main()

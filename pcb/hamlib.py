@@ -8,6 +8,7 @@ See also:
 import zipfile
 from collections import deque
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Generator
 from urllib.parse import urljoin
@@ -65,11 +66,14 @@ def open_hamiltonian(
         -0.5 [Z9 Z56] +
 
     """
+    start = datetime.now()
+    logging.debug("Downloading Hamiltonian from: {}", url)
     response = requests.get(url, stream=True)
     response.raise_for_status()  # Raise an exception for HTTP errors
     path = Path(output_dir) / url.split("/")[-1]
     with path.open("wb") as fp:
         fp.write(response.content)
+    logging.debug("Downloaded in: {}", datetime.now() - start)
     with zipfile.ZipFile(path, mode="r") as fp:
         if not (
             len(fp.namelist()) == 1 and fp.namelist()[0].endswith(".hdf5")
