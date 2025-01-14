@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, Literal
+from typing import Literal
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -13,13 +13,13 @@ from tqdm import tqdm
 
 from .hamlib import open_hamiltonian
 from .qiskit import to_evolution_gate
-from .utils import hash_dict
+from .utils import cached, hash_dict
 
 
 def _bench_one(
-    hamiltonian: bytes,
+    path: str | Path,
+    key: str,
     method: Literal["lie_trotter", "suzuki_trotter"],
-    output_file: Path,
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -38,6 +38,8 @@ def _bench_one(
 
     All Trotterizations are done with `reps=1`.
     """
+    with open_hamiltonian(path) as fp:
+        hamiltonian = fp[key][()]
     gate = to_evolution_gate(hamiltonian, shuffle=True)
     Trotter = LieTrotter if method == "lie_trotter" else SuzukiTrotter
     base_synth = Trotter(reps=1, preserve_order=True)
@@ -56,44 +58,13 @@ def _bench_one(
         "base_time": base_time,
         "pc_time": pc_time,
     }
-    with output_file.open("w", encoding="utf-8") as fp:
-        json.dump(result, fp)
     return result
-
-
-def _list_jobs(
-    path: Path,
-    hfid: str,
-    output_dir: Path,
-    n_trials: int = 10,
-) -> list[dict]:
-    """
-
-    Returns:
-        list[dict]: _description_
-    """
-    jobs = []
-    with open_hamiltonian(path) as fp:
-        for k in fp.keys():
-            hid = hfid + "/" + k
-            for method in ["lie_trotter", "suzuki_trotter"]:
-                for i in range(n_trials):
-                    jid = hash_dict({"hid": hid, "method": method, "trial": i})
-                    output_file = output_dir / f"{jid}.json"
-                    jobs.append(
-                        {
-                            "hamiltonian": fp[k][()],
-                            "method": method,
-                            "output_file": output_file,
-                        }
-                    )
-    return jobs
 
 
 def benchmark(
     index: pd.DataFrame,
-    input_dir: Path,
-    output_dir: Path,
+    input_dir: str | Path,
+    output_dir: str | Path,
     n_trials: int = 10,
     prefix: str | None = None,
     n_jobs: int = 32,
@@ -106,40 +77,43 @@ def benchmark(
         n_trials (int, optional):
         prefix (str | None, optional): Filter the Hamiltonians to benchmark
     """
+    input_dir, output_dir = Path(input_dir), Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
         index = index[index["hfid"].str.startswith(prefix)]
-    executor = Parallel(n_jobs=n_jobs, verbose=1)
-    jobs = [
-        delayed(_list_jobs)(
-            path=input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip"),
-            hfid=row["hfid"],
-            output_dir=output_dir,
-            n_trials=n_trials,
-        )
-        for _, row in tqdm(
-            index.iterrows(),
-            desc="Iterating through the index",
-            total=len(index),
-        )
-    ]
-    logging.info("Building job list")
-    results: Generator[list[dict], None, None] = executor(jobs)
     jobs = []
-    for batch in results:
-        jobs.extend(delayed(_bench_one)(kw) for kw in batch)
+    progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
+    for _, row in progress:
+        progress.set_postfix_str(row["hfid"])
+        path = input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
+        with open_hamiltonian(path) as fp:
+            for k in fp.keys():
+                hid = row["hfid"] + "/" + k
+                for method in ["lie_trotter", "suzuki_trotter"]:
+                    for i in range(n_trials):
+                        jid = hash_dict(
+                            {"hid": hid, "method": method, "trial": i}
+                        )
+                        f = cached(
+                            _bench_one,
+                            output_dir / f"{jid}.json",
+                            extra={"hid": hid},
+                        )
+                        kw = {"path": path, "key": k, "method": method}
+                        jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
+    executor = Parallel(n_jobs=n_jobs, verbose=100)
     executor(jobs)
     return consolidate(output_dir)
 
 
-def consolidate(output_dir: Path) -> pd.DataFrame:
+def consolidate(output_dir: str | Path) -> pd.DataFrame:
     """
     Gather all the output JSON files produced by `_bench_one` into a single
     dataframe
     """
     logging.info("Consolidating results from {}", output_dir)
-    rows = []
+    output_dir, rows = Path(output_dir), []
     for file in tqdm(output_dir.glob("*.json"), desc="Consolidating"):
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))

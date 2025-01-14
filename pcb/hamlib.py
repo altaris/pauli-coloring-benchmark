@@ -46,7 +46,7 @@ def _all_csv_urls(base_url: str) -> Generator[str, None, None]:
 
 
 @contextmanager
-def open_hamiltonian(path: Path) -> Generator[h5py.File, None, None]:
+def open_hamiltonian(path: str | Path) -> Generator[h5py.File, None, None]:
     """
     Context manager that downloads, decompresses, and opens a Hamiltonian HDF5 file from the given
     URL. The HDF5 file handler can essentially be used as dicts, where the keys
@@ -105,7 +105,7 @@ def build_index(base_url: str) -> pd.DataFrame:
 
 
 def download(
-    index: pd.DataFrame, output_dir: Path, prefix: str | None = None
+    index: pd.DataFrame, output_dir: str | Path, prefix: str | None = None
 ) -> None:
     """
     Downloads all the compressed HDF5 Hamiltonian files in the given index to
@@ -123,6 +123,7 @@ def download(
     logging.info(
         "Downloading {} Hamiltonians files to {}", len(index), output_dir
     )
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     progress = tqdm(index.iterrows(), desc="Downloading", total=len(index))
     for _, row in progress:

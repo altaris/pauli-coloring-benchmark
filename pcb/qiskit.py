@@ -8,7 +8,9 @@ from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
 
-def to_evolution_gate(raw: bytes, shuffle: bool = False) -> PauliEvolutionGate:
+def to_evolution_gate(
+    h: bytes | str, shuffle: bool = False
+) -> PauliEvolutionGate:
     """
     Converts a serialized sparse Pauli operator (in the format explained
     `hamlib.open_hamiltonian`) to a qiskit
@@ -31,11 +33,10 @@ def to_evolution_gate(raw: bytes, shuffle: bool = False) -> PauliEvolutionGate:
             1.0,
         )
 
-    matches = re.findall(r"\[([^\]]+)\]", raw.decode("utf-8"))
+    h = h if isinstance(h, str) else h.decode("utf-8")
+    matches = re.findall(r"\[([^\]]+)\]", h)
     if not matches:
-        raise ValueError(
-            "No terms found in Hamiltonian: " + raw.decode("utf-8")
-        )
+        raise ValueError("No terms found in Hamiltonian: " + h)
     terms = [_m2t(m) for m in matches]
     if shuffle:
         random.shuffle(terms)
