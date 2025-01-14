@@ -9,6 +9,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
+from tqdm import tqdm
 
 from .hamlib import open_hamiltonian
 from .qiskit import to_evolution_gate
@@ -79,16 +80,20 @@ def benchmark(
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
         index = index[index["hfid"].str.startswith(prefix)]
-    logging.info("Listing benchmark jobs")
     jobs = []
-    for _, row in index.iterrows():
+    for _, row in tqdm(
+        index.iterrows(), desc="Listing jobs", total=len(index)
+    ):
         path = input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
         if not path.is_file():
             logging.warning("Skipping {} as it is not downloaded", row["hfid"])
         with open_hamiltonian(path) as fp:
-            for k in fp.keys():
+            progress = tqdm(
+                fp.keys(), desc=f"Adding jobs from {row['hfid']}", leave=False
+            )
+            for k in progress:
                 hid = row["hfid"] + "/" + k
-                logging.debug("Adding jobs for {}", hid)
+                progress.set_postfix_str(k)
                 for method in ["lie_trotter", "suzuki_trotter"]:
                     for i in range(n_trials):
                         jid = hash_dict(
@@ -116,7 +121,7 @@ def consolidate(output_dir: Path) -> pd.DataFrame:
     """
     logging.info("Consolidating results from {}", output_dir)
     rows = []
-    for file in output_dir.glob("*.json"):
+    for file in tqdm(output_dir.glob("*.json"), desc="Consolidating"):
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))
     results = pd.DataFrame(rows)

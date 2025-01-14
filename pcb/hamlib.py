@@ -8,7 +8,6 @@ See also:
 import zipfile
 from collections import deque
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Generator
 from urllib.parse import urljoin
@@ -18,6 +17,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from loguru import logger as logging
+from tqdm import tqdm
 
 
 def _all_csv_urls(base_url: str) -> Generator[str, None, None]:
@@ -124,19 +124,17 @@ def download(
         "Downloading {} Hamiltonians files to {}", len(index), output_dir
     )
     output_dir.mkdir(parents=True, exist_ok=True)
-    for _, row in index.iterrows():
+    progress = tqdm(index.iterrows(), desc="Downloading", total=len(index))
+    for _, row in progress:
+        progress.set_postfix_str(row["hfid"])
         path = output_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
         if path.is_file():
             logging.debug("Skipping: {}", row["url"])
             continue
         try:
-            _start = datetime.now()
             response = requests.get(row["url"], stream=True, timeout=60)
             response.raise_for_status()
             with path.open("wb") as fp:
                 fp.write(response.content)
-            logging.debug(
-                "Downloaded {} in {}", row["url"], datetime.now() - _start
-            )
         except Exception as e:
             logging.error("Failed to download {}: {}", row["url"], e)
