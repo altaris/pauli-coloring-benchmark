@@ -46,9 +46,7 @@ def _all_csv_urls(base_url: str) -> Generator[str, None, None]:
 
 
 @contextmanager
-def open_hamiltonian(
-    url: str, output_dir: str | Path
-) -> Generator[h5py.File, None, None]:
+def open_hamiltonian(path: Path) -> Generator[h5py.File, None, None]:
     """
     Context manager that downloads, decompresses, and opens a Hamiltonian HDF5 file from the given
     URL. The HDF5 file handler can essentially be used as dicts, where the keys
@@ -66,14 +64,6 @@ def open_hamiltonian(
         -0.5 [Z9 Z56] +
 
     """
-    start = datetime.now()
-    logging.debug("Downloading Hamiltonian from: {}", url)
-    response = requests.get(url, stream=True)
-    response.raise_for_status()  # Raise an exception for HTTP errors
-    path = Path(output_dir) / url.split("/")[-1]
-    with path.open("wb") as fp:
-        fp.write(response.content)
-    logging.debug("Downloaded in: {}", datetime.now() - start)
     with zipfile.ZipFile(path, mode="r") as fp:
         if not (
             len(fp.namelist()) == 1 and fp.namelist()[0].endswith(".hdf5")
@@ -112,3 +102,41 @@ def build_index(base_url: str) -> pd.DataFrame:
         )
         data.append(df)
     return pd.concat(data, ignore_index=True)
+
+
+def download(
+    index: pd.DataFrame, output_dir: Path, prefix: str | None = None
+) -> None:
+    """
+    Downloads all the compressed HDF5 Hamiltonian files in the given index to
+    the given output directory. `prefix` can be set to restrict the benchmark to
+    a given family of Hamiltonians, for example `binaryoptimization/maxcut`.
+
+    The downloaded files are not decompressed and named after their Hamiltonian
+    file ID.
+
+    This function does not distribute the downloads across multiple processes to
+    not slam the HamLib website with requests.
+    """
+    if prefix:
+        index = index[index["hfid"].str.startswith(prefix)]
+    logging.info(
+        "Downloading {} Hamiltonians files to {}", len(index), output_dir
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for _, row in index.iterrows():
+        path = output_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
+        if path.is_file():
+            logging.debug("Skipping: {}", row["url"])
+            continue
+        try:
+            _start = datetime.now()
+            response = requests.get(row["url"], stream=True, timeout=60)
+            response.raise_for_status()
+            with path.open("wb") as fp:
+                fp.write(response.content)
+            logging.debug(
+                "Downloaded {} in {}", row["url"], datetime.now() - _start
+            )
+        except Exception as e:
+            logging.error("Failed to download {}: {}", row["url"], e)

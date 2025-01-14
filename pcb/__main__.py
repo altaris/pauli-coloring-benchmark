@@ -1,6 +1,7 @@
 """CLI module"""
 
 import os
+from pathlib import Path
 from typing import TextIO
 
 import click
@@ -31,6 +32,41 @@ def main(logging_level: str) -> None:
 
 
 @main.command()
+@click.argument("index_csv", type=click.File("r"))
+@click.argument("input_dir", type=Path)
+@click.argument("output_dir", type=Path)
+@click.option("--prefix", type=str, default="")
+@click.option("--n-trials", type=int, default=10)
+@click.option("--n-jobs", type=int, default=32)
+def benchmark(
+    index_csv: TextIO,
+    input_dir: Path,
+    output_dir: Path,
+    prefix: str,
+    n_trials: int,
+    n_jobs: int,
+) -> None:
+    from datetime import datetime
+
+    import pandas as pd
+
+    from .benchmark import benchmark as _benchmark
+
+    index = pd.read_csv(index_csv)
+    start = datetime.now()
+    df = _benchmark(
+        index=index,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        n_trials=n_trials,
+        prefix=prefix,
+        n_jobs=n_jobs,
+    )
+    df.to_csv(output_dir / "results.csv", index=False)
+    logging.info("Done in: {}", datetime.now() - start)
+
+
+@main.command()
 @click.argument("output_csv", type=click.File("w"))
 @click.option(
     "--hamlib-url",
@@ -53,19 +89,20 @@ def build_index(hamlib_url: str, output_csv: TextIO) -> None:
 
 @main.command()
 @click.argument("index_csv", type=click.File("r"))
-@click.argument("output_csv", type=click.File("w"))
+@click.argument("output_dir", type=Path)
 @click.option("--prefix", type=str, default="")
-@click.option("--n-trials", type=int, default=10)
-def run_benchmark(
-    index_csv: TextIO, output_csv: TextIO, prefix: str, n_trials: int
-) -> None:
+def download(index_csv: TextIO, output_dir: Path, prefix: str) -> None:
+    """Downloads all Hamiltonian files in the index."""
+    from datetime import datetime
+
     import pandas as pd
 
-    from .benchmark import benchmark
+    from .hamlib import download as _download
 
+    start = datetime.now()
     index = pd.read_csv(index_csv)
-    df = benchmark(index, n_trials=n_trials, prefix=prefix)
-    df.to_csv(output_csv, index=False)
+    _download(index, output_dir, prefix)
+    logging.info("Done in: {}", datetime.now() - start)
 
 
 # pylint: disable=no-value-for-parameter
