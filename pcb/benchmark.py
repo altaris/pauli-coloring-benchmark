@@ -63,7 +63,7 @@ def _bench_one(
 
 def benchmark(
     index: pd.DataFrame,
-    input_dir: str | Path,
+    ham_dir: str | Path,
     output_dir: str | Path,
     n_trials: int = 10,
     prefix: str | None = None,
@@ -72,12 +72,13 @@ def benchmark(
     """
     Args:
         index (pd.DataFrame):
-        input_dir (Path): Directory containing the downloaded Hamiltonian files.
+        ham_dir (Path): Directory containing the downloaded Hamiltonian
+            `.hdf5.zip`files.
         output_dir (Path):
         n_trials (int, optional):
         prefix (str | None, optional): Filter the Hamiltonians to benchmark
     """
-    input_dir, output_dir = Path(input_dir), Path(output_dir)
+    ham_dir, output_dir = Path(ham_dir), Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
         index = index[index["hfid"].str.startswith(prefix)]
@@ -85,7 +86,7 @@ def benchmark(
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
         progress.set_postfix_str(row["hfid"])
-        path = input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
+        path = ham_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
         with open_hamiltonian(path) as fp:
             for k in fp.keys():
                 hid = row["hfid"] + "/" + k
