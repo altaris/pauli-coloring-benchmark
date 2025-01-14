@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Generator, Literal
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -61,6 +61,35 @@ def _bench_one(
     return result
 
 
+def _list_jobs(
+    path: Path,
+    hfid: str,
+    output_dir: Path,
+    n_trials: int = 10,
+) -> list[dict]:
+    """
+
+    Returns:
+        list[dict]: _description_
+    """
+    jobs = []
+    with open_hamiltonian(path) as fp:
+        for k in fp.keys():
+            hid = hfid + "/" + k
+            for method in ["lie_trotter", "suzuki_trotter"]:
+                for i in range(n_trials):
+                    jid = hash_dict({"hid": hid, "method": method, "trial": i})
+                    output_file = output_dir / f"{jid}.json"
+                    jobs.append(
+                        {
+                            "hamiltonian": fp[k][()],
+                            "method": method,
+                            "output_file": output_file,
+                        }
+                    )
+    return jobs
+
+
 def benchmark(
     index: pd.DataFrame,
     input_dir: Path,
@@ -80,37 +109,27 @@ def benchmark(
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
         index = index[index["hfid"].str.startswith(prefix)]
+    executor = Parallel(n_jobs=n_jobs, verbose=1)
+    jobs = [
+        delayed(_list_jobs)(
+            path=input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip"),
+            hfid=row["hfid"],
+            output_dir=output_dir,
+            n_trials=n_trials,
+        )
+        for _, row in tqdm(
+            index.iterrows(),
+            desc="Iterating through the index",
+            total=len(index),
+        )
+    ]
+    logging.info("Building job list")
+    results: Generator[list[dict], None, None] = executor(jobs)
     jobs = []
-    for _, row in tqdm(
-        index.iterrows(), desc="Listing jobs", total=len(index)
-    ):
-        path = input_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
-        if not path.is_file():
-            logging.warning("Skipping {} as it is not downloaded", row["hfid"])
-        with open_hamiltonian(path) as fp:
-            progress = tqdm(
-                fp.keys(), desc=f"Adding jobs from {row['hfid']}", leave=False
-            )
-            for k in progress:
-                hid = row["hfid"] + "/" + k
-                progress.set_postfix_str(k)
-                for method in ["lie_trotter", "suzuki_trotter"]:
-                    for i in range(n_trials):
-                        jid = hash_dict(
-                            {"hid": hid, "method": method, "trial": i}
-                        )
-                        output_file = output_dir / f"{jid}.json"
-                        jobs.append(
-                            delayed(_bench_one)(
-                                {
-                                    "hamiltonian": fp[k][()],
-                                    "method": method,
-                                    "output_file": output_file,
-                                }
-                            ),
-                        )
+    for batch in results:
+        jobs.extend(delayed(_bench_one)(kw) for kw in batch)
     logging.info("Submitting {} jobs", len(jobs))
-    Parallel(n_jobs=n_jobs)(jobs)
+    executor(jobs)
     return consolidate(output_dir)
 
 
