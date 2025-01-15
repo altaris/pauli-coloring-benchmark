@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from itertools import product
 from pathlib import Path
 from typing import Literal
 
@@ -20,6 +21,7 @@ def _bench_one(
     path: str | Path,
     key: str,
     method: Literal["lie_trotter", "suzuki_trotter"],
+    color: bool = False,
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -27,36 +29,29 @@ def _bench_one(
     operator are shuffled before the comparison.
 
     The returned dict has the following columns:
-    - `method`: Either `lie_trotter` or `suzuki_trotter`,
-    - `n_terms`: Number of terms in the underlying Pauli operator,
-    - `base_depth`: The depth of the circuit obtained by direct Trotterization,
-    - `pc_depth`: The depth of the circuit obtained by Pauli coloring during
-      Trotterization,
-    - `base_time`: Time taken by direct Trotterization (in miliseconds),
-    - `pc_time`: Time taken by using Pauli coloring during Trotterization (also
-      in miliseconds).
+    - `method`: either `lie_trotter` or `suzuki_trotter`,
+    - `color`: whether pauli coloring is used,
+    - `n_terms`: number of terms in the underlying pauli operator,
+    - `depth`: the depth of the circuit obtained by Trotterization,
+    - `time`: time taken by Trotterization (in miliseconds).
 
     All Trotterizations are done with `reps=1`.
     """
     with open_hamiltonian(path) as fp:
         hamiltonian = fp[key][()]
-    gate = to_evolution_gate(hamiltonian, shuffle=True)
+    # no need to shuffle if we're coloring
+    gate = to_evolution_gate(hamiltonian, shuffle=(not color))
     Trotter = LieTrotter if method == "lie_trotter" else SuzukiTrotter
-    base_synth = Trotter(reps=1, preserve_order=True)
-    pc_synth = Trotter(reps=1, preserve_order=False)
+    synthesizer = Trotter(reps=1, preserve_order=(not color))
     start = datetime.now()
-    base_circuit = base_synth.synthesize(gate)
-    base_time = (start - datetime.now()).microseconds * 1000
-    start = datetime.now()
-    pc_circuit = pc_synth.synthesize(gate)
-    pc_time = (start - datetime.now()).microseconds * 1000
+    circuit = synthesizer.synthesize(gate)
+    time = (start - datetime.now()).microseconds * 1000
     result = {
         "method": method,
+        "color": color,
         "n_terms": len(gate.operator),
-        "base_depth": base_circuit.depth(),
-        "pc_depth": pc_circuit.depth(),
-        "base_time": base_time,
-        "pc_time": pc_time,
+        "depth": circuit.depth(),
+        "time": time,
     }
     return result
 
@@ -88,34 +83,40 @@ def benchmark(
         progress.set_postfix_str(row["hfid"])
         path = ham_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
         with open_hamiltonian(path) as fp:
-            for k in fp.keys():
+            everything = product(
+                fp.keys(),
+                ["lie_trotter", "suzuki_trotter"],
+                [True, False],
+                range(n_trials),
+            )
+            for k, method, color, i in everything:
+                if color and i > 0:
+                    continue  # no need to repeat colored runs
                 hid = row["hfid"] + "/" + k
-                for method in ["lie_trotter", "suzuki_trotter"]:
-                    for i in range(n_trials):
-                        jid = hash_dict(
-                            {"hid": hid, "method": method, "trial": i}
-                        )
-                        f = cached(
-                            _bench_one,
-                            output_dir / f"{jid}.json",
-                            extra={"hid": hid},
-                        )
-                        kw = {"path": path, "key": k, "method": method}
-                        jobs.append(delayed(f)(**kw))
+                jid = hash_dict(
+                    {"hid": hid, "method": method, "color": color, "trial": i}
+                )
+                f = cached(
+                    _bench_one,
+                    output_dir / "jobs" / f"{jid}.json",
+                    extra={"hid": hid},
+                )
+                kw = {"path": path, "key": k, "method": method, "color": color}
+                jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
-    executor = Parallel(n_jobs=n_jobs, verbose=100)
+    executor = Parallel(n_jobs=n_jobs, verbose=1)
     executor(jobs)
-    return consolidate(output_dir)
+    return consolidate(output_dir / "jobs")
 
 
-def consolidate(output_dir: str | Path) -> pd.DataFrame:
+def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
     """
     Gather all the output JSON files produced by `_bench_one` into a single
     dataframe
     """
-    logging.info("Consolidating results from {}", output_dir)
-    output_dir, rows = Path(output_dir), []
-    for file in tqdm(output_dir.glob("*.json"), desc="Consolidating"):
+    logging.info("Consolidating results from {}", jobs_dir)
+    jobs_dir, rows = Path(jobs_dir), []
+    for file in tqdm(jobs_dir.glob("*.json"), desc="Consolidating"):
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))
     results = pd.DataFrame(rows)

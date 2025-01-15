@@ -54,7 +54,7 @@ def open_hamiltonian(path: str | Path) -> Generator[h5py.File, None, None]:
     string is a serialized sparse Pauli operator that looks like this (after
     decoding):
 
-        >>> with open_hamiltonian("http://...", output_dir="...") as fp:
+        >>> with open_hamiltonian("...") as fp:
         >>>     k = list(fp.keys())[0]
         >>>     print(fp[k][()].decode("utf-8"))
         22.5 [] +
@@ -69,7 +69,8 @@ def open_hamiltonian(path: str | Path) -> Generator[h5py.File, None, None]:
             len(fp.namelist()) == 1 and fp.namelist()[0].endswith(".hdf5")
         ):
             raise ValueError(
-                "Expected exactly one .hdf5 file in the downloaded ZIP"
+                f"Expected exactly one .hdf5 file in archive {path}, found "
+                + ", ".join(fp.namelist())
             )
         name = fp.namelist()[0]
         with fp.open(name, "r") as h5fp:
