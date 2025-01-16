@@ -12,7 +12,7 @@ from loguru import logger as logging
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
-from .coloring import greedy_reordering
+from .coloring import reorder
 from .hamlib import open_hamiltonian_file
 from .qiskit import to_evolution_gate
 from .utils import cached, hash_dict
@@ -22,7 +22,9 @@ def _bench_one(
     path: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
-    coloring: Literal["greedy", "none"],
+    coloring: Literal[
+        "greedy", "degree", "independent_set", "saturation", "none"
+    ],
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -41,12 +43,11 @@ def _bench_one(
     with open_hamiltonian_file(path) as fp:
         hamiltonian: bytes = fp[key][()]
     gate = to_evolution_gate(hamiltonian, shuffle=True)
-    if coloring == "greedy":
-        gate = greedy_reordering(gate)
     Trotter = LieTrotter if trotterization == "lie_trotter" else SuzukiTrotter
-    synthesizer = Trotter(reps=1, preserve_order=True)
-
     start = datetime.now()
+    if coloring != "none":
+        gate = reorder(gate, coloring)
+    synthesizer = Trotter(reps=1, preserve_order=True)
     circuit = synthesizer.synthesize(gate)
     time = (datetime.now() - start).microseconds / 1000
     result = {
@@ -89,7 +90,7 @@ def benchmark(
             everything = product(
                 fp.keys(),
                 ["lie_trotter", "suzuki_trotter"],
-                ["greedy", "none"],
+                ["greedy", "degree", "independent_set", "saturation", "none"],
                 range(n_trials),
             )
             for k, trotterization, coloring, i in everything:
