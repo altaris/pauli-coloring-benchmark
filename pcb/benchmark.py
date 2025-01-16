@@ -12,6 +12,7 @@ from loguru import logger as logging
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
+from .coloring import greedy_reordering
 from .hamlib import open_hamiltonian
 from .qiskit import to_evolution_gate
 from .utils import cached, hash_dict
@@ -38,11 +39,12 @@ def _bench_one(
     All Trotterizations are done with `reps=1`.
     """
     with open_hamiltonian(path) as fp:
-        hamiltonian = fp[key][()]
-    # no need to shuffle if we're coloring
-    gate = to_evolution_gate(hamiltonian, shuffle=(not color))
+        hamiltonian: bytes = fp[key][()]
+    gate = to_evolution_gate(hamiltonian, shuffle=True)
+    if color:
+        gate = greedy_reordering(gate)
     Trotter = LieTrotter if method == "lie_trotter" else SuzukiTrotter
-    synthesizer = Trotter(reps=1, preserve_order=(not color))
+    synthesizer = Trotter(reps=1, preserve_order=True)
     start = datetime.now()
     circuit = synthesizer.synthesize(gate)
     time = (datetime.now() - start).microseconds / 1000
@@ -90,8 +92,6 @@ def benchmark(
                 range(n_trials),
             )
             for k, method, color, i in everything:
-                if color and i > 0:
-                    continue  # no need to repeat colored runs
                 hid = row["hfid"] + "/" + k
                 jid = hash_dict(
                     {"hid": hid, "method": method, "color": color, "trial": i}
