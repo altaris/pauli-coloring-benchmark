@@ -46,15 +46,16 @@ def _all_csv_urls(base_url: str) -> Generator[str, None, None]:
 
 
 @contextmanager
-def open_hamiltonian(path: str | Path) -> Generator[h5py.File, None, None]:
+def open_hamiltonian_file(
+    path: str | Path,
+) -> Generator[h5py.File, None, None]:
     """
-    Context manager that downloads, decompresses, and opens a Hamiltonian HDF5 file from the given
-    URL. The HDF5 file handler can essentially be used as dicts, where the keys
-    are names (e.g. `"1-ising2.5-100_5555-10"`) and the byte strings. Each byte
-    string is a serialized sparse Pauli operator that looks like this (after
+    A Hamiltonian file is a ZIP archive containing a single HDF5 file, which
+    contains essentially a dict of byte strings, each representing a serialized
+    sparse Pauli operator. The serialization format looks like this (after
     decoding):
 
-        >>> with open_hamiltonian("...") as fp:
+        >>> with open_hamiltonian_file("...") as fp:
         >>>     k = list(fp.keys())[0]
         >>>     print(fp[k][()].decode("utf-8"))
         22.5 [] +
@@ -62,6 +63,9 @@ def open_hamiltonian(path: str | Path) -> Generator[h5py.File, None, None]:
         -0.5 [Z9 Z26] +
         -0.5 [Z9 Z29] +
         -0.5 [Z9 Z56] +
+
+    Warning:
+        Note the `[()]` when accessing a key!
 
     """
     with zipfile.ZipFile(path, mode="r") as fp:

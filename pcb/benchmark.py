@@ -13,7 +13,7 @@ from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
 from .coloring import greedy_reordering
-from .hamlib import open_hamiltonian
+from .hamlib import open_hamiltonian_file
 from .qiskit import to_evolution_gate
 from .utils import cached, hash_dict
 
@@ -21,8 +21,8 @@ from .utils import cached, hash_dict
 def _bench_one(
     path: str | Path,
     key: str,
-    method: Literal["lie_trotter", "suzuki_trotter"],
-    color: bool = False,
+    trotterization: Literal["lie_trotter", "suzuki_trotter"],
+    coloring: Literal["greedy", "none"],
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -30,27 +30,28 @@ def _bench_one(
     operator are shuffled before the comparison.
 
     The returned dict has the following columns:
-    - `method`: either `lie_trotter` or `suzuki_trotter`,
-    - `color`: whether pauli coloring is used,
-    - `n_terms`: number of terms in the underlying pauli operator,
+    - `trotterization`: as passed,
+    - `coloring`: as passed,
+    - `n_terms`: number of terms in the underlying Pauli operator,
     - `depth`: the depth of the circuit obtained by Trotterization,
     - `time`: time taken by Trotterization (in miliseconds).
 
     All Trotterizations are done with `reps=1`.
     """
-    with open_hamiltonian(path) as fp:
+    with open_hamiltonian_file(path) as fp:
         hamiltonian: bytes = fp[key][()]
     gate = to_evolution_gate(hamiltonian, shuffle=True)
-    if color:
+    if coloring == "greedy":
         gate = greedy_reordering(gate)
-    Trotter = LieTrotter if method == "lie_trotter" else SuzukiTrotter
+    Trotter = LieTrotter if trotterization == "lie_trotter" else SuzukiTrotter
     synthesizer = Trotter(reps=1, preserve_order=True)
+
     start = datetime.now()
     circuit = synthesizer.synthesize(gate)
     time = (datetime.now() - start).microseconds / 1000
     result = {
-        "method": method,
-        "color": color,
+        "trotterization": trotterization,
+        "coloring": coloring,
         "n_terms": len(gate.operator),
         "depth": circuit.depth(),
         "time": time,
@@ -84,24 +85,34 @@ def benchmark(
     for _, row in progress:
         progress.set_postfix_str(row["hfid"])
         path = ham_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
-        with open_hamiltonian(path) as fp:
+        with open_hamiltonian_file(path) as fp:
             everything = product(
                 fp.keys(),
                 ["lie_trotter", "suzuki_trotter"],
-                [True, False],
+                ["greedy", "none"],
                 range(n_trials),
             )
-            for k, method, color, i in everything:
+            for k, trotterization, coloring, i in everything:
                 hid = row["hfid"] + "/" + k
                 jid = hash_dict(
-                    {"hid": hid, "method": method, "color": color, "trial": i}
+                    {
+                        "hid": hid,
+                        "trotterization": trotterization,
+                        "coloring": coloring,
+                        "trial": i,
+                    }
                 )
                 f = cached(
                     _bench_one,
                     output_dir / "jobs" / f"{jid}.json",
                     extra={"hid": hid},
                 )
-                kw = {"path": path, "key": k, "method": method, "color": color}
+                kw = {
+                    "path": path,
+                    "key": k,
+                    "trotterization": trotterization,
+                    "coloring": coloring,
+                }
                 jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
     executor = Parallel(n_jobs=n_jobs, verbose=1)
