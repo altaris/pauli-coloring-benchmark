@@ -45,7 +45,7 @@ def _bench_one(
     synthesizer = Trotter(reps=1, preserve_order=(not color))
     start = datetime.now()
     circuit = synthesizer.synthesize(gate)
-    time = (start - datetime.now()).microseconds * 1000
+    time = (datetime.now() - start).microseconds / 1000
     result = {
         "method": method,
         "color": color,
