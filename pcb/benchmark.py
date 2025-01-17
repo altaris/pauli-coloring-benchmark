@@ -22,9 +22,7 @@ def _bench_one(
     path: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
-    coloring: Literal[
-        "greedy", "degree", "independent_set", "saturation", "none"
-    ],
+    coloring: Literal["degree", "saturation", "none"],
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -89,8 +87,16 @@ def benchmark(
         with open_hamiltonian_file(path) as fp:
             everything = product(
                 fp.keys(),
-                ["lie_trotter", "suzuki_trotter"],
-                ["greedy", "degree", "independent_set", "saturation", "none"],
+                [
+                    # "lie_trotter",
+                    "suzuki_trotter",
+                ],
+                [
+                    "none",
+                    "degree",
+                    "saturation",
+                    # "independent_set",
+                ],
                 range(n_trials),
             )
             for k, trotterization, coloring, i in everything:

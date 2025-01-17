@@ -1,20 +1,20 @@
 """Coloring and reordering of Pauli terms for `PauliEvolutionGate`s."""
 
 from collections import defaultdict
-from itertools import combinations, product
-from typing import Iterable, Literal, TypeVar
+from typing import Generator, Iterable, Literal, TypeAlias, TypeVar
 
-import rustworkx as rx
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
-A = TypeVar("A")
-B = TypeVar("B")
+_A = TypeVar("_A")
+_B = TypeVar("_B")
+
+Coloring: TypeAlias = dict[int, list[int]]
 
 
-def _apply_coloring(
+def _reorder_by_colors(
     gate: PauliEvolutionGate, color_dct: dict[int, int]
-) -> PauliEvolutionGate:
+) -> tuple[PauliEvolutionGate, Coloring]:
     """
     Given a mapping that gives a color to each term (index), produces a new
     gate whose underlying operator's terms are ordered consequently.
@@ -26,10 +26,10 @@ def _apply_coloring(
         [terms[i] for grp in coloring.values() for i in grp],
         gate.num_qubits,
     )
-    return PauliEvolutionGate(operator, gate.params[0])
+    return PauliEvolutionGate(operator, gate.params[0]), coloring
 
 
-def _invert_dict(dct: dict[A, B]) -> dict[B, list[A]]:
+def _invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
     res = defaultdict(list)
     for k, v in dct.items():
         res[v].append(k)
@@ -73,19 +73,29 @@ def _term_groups(operator: SparsePauliOp) -> dict[int, dict[str, list[int]]]:
     return groups
 
 
-def greedy_reordering(gate: PauliEvolutionGate) -> PauliEvolutionGate:
+def degree_reordering(
+    gate: PauliEvolutionGate,
+) -> tuple[PauliEvolutionGate, Coloring]:
     """
-    Reorder the terms of a `PauliEvolutionGate` following the bare minimum most
-    greedy Pauli coloring scheme.
+    TODO: cite paper
+    """
 
-    Warning:
-        The gate's operator must be a single `SparsePauliOp` object.
-    """
+    def _degree(pauli_str: str, indices: list[int]) -> int:
+        d = 0
+        for pauli, qubit in zip(pauli_str, indices):
+            for k, v in groups[qubit].items():
+                if k == pauli:
+                    continue
+                d += len(v)
+        return d
+
     operator = gate.operator
     assert isinstance(operator, SparsePauliOp)
     terms, groups = operator.to_sparse_list(), _term_groups(operator)
     color = {term_idx: 0 for term_idx in range(len(terms))}
-    for term_idx, (pauli_str, indices, _) in enumerate(terms):
+    everything = list(enumerate(terms))
+    everything.sort(key=lambda e: _degree(e[1][0], e[1][1]), reverse=True)
+    for term_idx, (pauli_str, indices, _) in everything:
         taken: set[int] = set()
         for qubit, pauli in zip(indices, pauli_str):
             for k, v in groups[qubit].items():
@@ -93,46 +103,72 @@ def greedy_reordering(gate: PauliEvolutionGate) -> PauliEvolutionGate:
                     continue
                 taken.update(color[i] for i in v)
         color[term_idx] = _smallest_int_not_in(taken)
-    return _apply_coloring(gate, color)
+    return _reorder_by_colors(gate, color)
 
 
-def non_commutation_graph(operator: SparsePauliOp) -> rx.PyGraph:
+def saturation_reordering(
+    gate: PauliEvolutionGate,
+) -> tuple[PauliEvolutionGate, Coloring]:
     """
-    Create a graph where the vertices are the (indices of the) the Pauli terms
-    of the operator, and the edges are between non-commuting terms.
+    TODO: cite paper
     """
-    n_terms, groups = len(operator), _term_groups(operator)
-    graph: rx.PyGraph = rx.PyGraph(multigraph=False, node_count_hint=n_terms)  # type: ignore
-    graph.add_nodes_from(range(n_terms))
-    for v in groups.values():
-        for sg1, sg2 in combinations(v.values(), 2):
-            graph.add_edges_from(list(product(sg1, sg2, [None])))
-    return graph
+
+    def _first_uncolored() -> int:
+        for i in range(len(terms)):
+            if i not in color:
+                return i
+        raise RuntimeError("All nodes are colored baka")
+
+    def _neighbors(i: int) -> Generator[int, None, None]:
+        pauli_str, indices, _ = terms[i]
+        for qubit, pauli in zip(indices, pauli_str):
+            for k, v in groups[qubit].items():
+                if k == pauli:
+                    continue
+                yield from v
+
+    operator = gate.operator
+    assert isinstance(operator, SparsePauliOp)
+    terms, groups = operator.to_sparse_list(), _term_groups(operator)
+    color: dict[int, int] = {}
+    while len(color) < len(terms):
+        # Loop invariant: at the beginning of each iteration, every connected
+        # component is either fully colored or fully uncolored
+        i = _first_uncolored()  # => the conn. cmp. of i is uncolored
+        color[i] = 0
+        # The fringe dict contains uncolored nodes touching at least one colored
+        # node, and maps them to the (necessarily non empty) set of neighboring
+        # colors. At any point, the highest saturation uncolored node is
+        # necessarily in the fringe, so this restricts the search space
+        fringe = defaultdict(set)
+        for j in _neighbors(i):
+            fringe[j].add(0)
+        while fringe:
+            # get highest saturation node in the fringe
+            i, nci = max(fringe.items(), key=lambda e: len(e[1]))
+            color[i] = _smallest_int_not_in(nci)  # assign color
+            del fringe[i]  # remove i from fringe since it's now colored
+            # update neighbors of i (which potentially adds them to fringe)
+            for j in _neighbors(i):
+                if j not in color:
+                    fringe[j].add(color[i])
+        # fringe is empty, meaning that we fully colored a connected component
+    return _reorder_by_colors(gate, color)
 
 
 def reorder(
     gate: PauliEvolutionGate,
-    method: Literal["greedy", "degree", "independent_set", "saturation"],
+    method: Literal["degree", "saturation"],
 ) -> PauliEvolutionGate:
     """
     Applies Pauli coloring to reorder the Pauli terms in the underlying operator
     of the gate.
 
     The supported coloring methods are:
-    * `greedy`: Cheapest but probably least efficient.
-    * `degree`: Requires constructing the non-commutation graph of the operator
-      which may be very expensive!
-    * `independent_set`: same
-    * `saturation`: same
+    * `degree`: Least expensive.
+    * `saturation`:
+    * `independent_set`: Most expensive. TODO: implement
     """
-    if method == "greedy":
-        return greedy_reordering(gate)
-    assert isinstance(gate.operator, SparsePauliOp)
-    graph = non_commutation_graph(gate.operator)
-    strategy = {
-        "degree": rx.ColoringStrategy.Degree,  # type: ignore
-        "independent_set": rx.ColoringStrategy.IndependentSet,  # type: ignore
-        "saturation": rx.ColoringStrategy.Saturation,  # type: ignore
-    }[method]
-    colors = rx.graph_greedy_color(graph, strategy=strategy)  # type: ignore
-    return _apply_coloring(gate, colors)
+    f = degree_reordering if method == "degree" else saturation_reordering
+    gate, _ = f(gate)
+    return gate
