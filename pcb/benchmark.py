@@ -116,7 +116,9 @@ def benchmark(
                 }
                 jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
-    executor = Parallel(n_jobs=n_jobs, verbose=1)
+    executor = Parallel(
+        n_jobs=n_jobs, prefer="processes", timeout=3600 * 24, verbose=1
+    )
     executor(jobs)
     return consolidate(output_dir / "jobs")
 
