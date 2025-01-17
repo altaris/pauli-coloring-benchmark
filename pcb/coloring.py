@@ -46,7 +46,7 @@ def _smallest_int_not_in(iterable: Iterable[int]) -> int:
     return i
 
 
-def _term_groups(operator: SparsePauliOp) -> dict[int, dict[str, list[int]]]:
+def _term_groups(operator: SparsePauliOp) -> dict[int, dict[str, set[int]]]:
     """
     Create a two-level dictionary that groups terms by Pauli operator (except
     $I$) and qubit. For example, if index `i` is in `groups[qubit][pauli]`,
@@ -57,19 +57,19 @@ def _term_groups(operator: SparsePauliOp) -> dict[int, dict[str, list[int]]]:
 
     >>> op = SparsePauliOp.from_list([("IIXXII", 1), ("XZIXII", 1)])
     >>> _term_groups(op)
-    defaultdict(<function __main__.<lambda>()>,
-        {2: defaultdict(list, {'X': [0, 1]}),
-         3: defaultdict(list, {'X': [0]}),
-         4: defaultdict(list, {'Z': [1]}),
-         5: defaultdict(list, {'X': [1]})})
+    defaultdict(...,
+        {2: defaultdict(set, {'X': {0, 1}}),
+         3: defaultdict(set, {'X': {0}}),
+         4: defaultdict(set, {'Z': {1}}),
+         5: defaultdict(set, {'X': {1}})})
     """
     terms = operator.to_sparse_list()
-    groups: dict[int, dict[str, list[int]]] = defaultdict(
-        lambda: defaultdict(list)
+    groups: dict[int, dict[str, set[int]]] = defaultdict(
+        lambda: defaultdict(set)
     )
     for term_idx, (pauli_str, indices, _) in enumerate(terms):
         for qubit, pauli in zip(indices, pauli_str):
-            groups[qubit][pauli].append(term_idx)
+            groups[qubit][pauli].add(term_idx)
     return groups
 
 
