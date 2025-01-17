@@ -11,7 +11,7 @@ _P = ParamSpec("_P")
 
 def cached(
     func: Callable[_P, dict], cache_file: Path, extra: dict | None = None
-) -> Callable[_P, dict]:
+) -> Callable[_P, dict | None]:
     """
     Decorator to cache the results of a function.
 
@@ -23,18 +23,22 @@ def cached(
     """
 
     @wraps(func)
-    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> dict:
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> dict | None:
         try:
             with cache_file.open("r", encoding="utf-8") as fp:
                 result: dict = json.load(fp)
+                return result
         except (FileNotFoundError, json.JSONDecodeError):
-            cache_file.parent.mkdir(parents=True, exist_ok=True)
-            result = func(*args, **kwargs)
-            if extra:
-                result.update(extra)
-            with cache_file.open("w", encoding="utf-8") as fp:
-                json.dump(result, fp)
-        return result
+            try:
+                result = func(*args, **kwargs)
+                if extra:
+                    result.update(extra)
+                cache_file.parent.mkdir(parents=True, exist_ok=True)
+                with cache_file.open("w", encoding="utf-8") as fp:
+                    json.dump(result, fp)
+                return result
+            except:
+                return None
 
     return wrapper
 
