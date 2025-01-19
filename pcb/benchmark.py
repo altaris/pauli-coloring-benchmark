@@ -34,7 +34,7 @@ def _bench_one(
     - `coloring`: as passed,
     - `n_terms`: number of terms in the underlying Pauli operator,
     - `depth`: the depth of the circuit obtained by Trotterization,
-    - `time`: time taken by Trotterization (in miliseconds).
+    - `time`: time taken by Trotterization (in milliseconds).
 
     All Trotterizations are done with `reps=1`.
     """
@@ -78,49 +78,48 @@ def benchmark(
     ham_dir, output_dir = Path(ham_dir), Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
-        index = index[index["hfid"].str.startswith(prefix)]
+        index = index[index["dir"].str.startswith(prefix)]
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
-        progress.set_postfix_str(row["hfid"])
-        path = ham_dir / (row["hfid"].replace("/", "__") + ".hdf5.zip")
-        with open_hamiltonian_file(path) as fp:
-            everything = product(
-                fp.keys(),
-                [
-                    # "lie_trotter",
-                    "suzuki_trotter",
-                ],
-                [
-                    "none",
-                    "degree",
-                    "saturation",
-                    # "independent_set",
-                ],
-                range(n_trials),
-            )
-            for k, trotterization, coloring, i in everything:
-                hid = row["hfid"] + "/" + k
-                jid = hash_dict(
-                    {
-                        "hid": hid,
-                        "trotterization": trotterization,
-                        "coloring": coloring,
-                        "trial": i,
-                    }
-                )
-                f = cached(
-                    _bench_one,
-                    output_dir / "jobs" / f"{jid}.json",
-                    extra={"hid": hid},
-                )
-                kw = {
-                    "path": path,
-                    "key": k,
+        ham_path = ham_dir / (
+            (row["dir"] + row["file"]).replace("/", "__") + ".hdf5.zip"
+        )
+        everything = product(
+            [
+                # "lie_trotter",
+                "suzuki_trotter",
+            ],
+            [
+                "none",
+                "degree",
+                "saturation",
+                # "independent_set",
+            ],
+            range(n_trials),
+        )
+        for trotterization, coloring, i in everything:
+            hid = row["dir"] + row["file"] + "/" + row["key"]
+            jid = hash_dict(
+                {
+                    "hid": hid,
                     "trotterization": trotterization,
                     "coloring": coloring,
+                    "trial": i,
                 }
-                jobs.append(delayed(f)(**kw))
+            )
+            f = cached(
+                _bench_one,
+                output_dir / "jobs" / f"{jid}.json",
+                extra={"hid": hid},
+            )
+            kw = {
+                "path": ham_path,
+                "key": row["key"],
+                "trotterization": trotterization,
+                "coloring": coloring,
+            }
+            jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
     executor = Parallel(
         n_jobs=n_jobs, prefer="processes", timeout=3600 * 24, verbose=1
