@@ -25,7 +25,12 @@
         Homepage      = "https://github.com/altaris/pcb"
         Repository    = "https://github.com/altaris/pcb.git"
     [project.optional-dependencies]
-        dev = ["pdoc>=14.7.0"]
+jupyter = [
+            "ipywidgets>=8.1.5",
+            "jupyter-black>=0.4.0",
+            "matplotlib>=3.10.0",
+            "seaborn>=0.13.2",
+]
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file-format
 [tool.mypy]
     check_untyped_defs     = true
@@ -90,7 +95,7 @@
         ]
 [tool.uv]
     dev-dependencies = [
-        "ipykernel>=6.29.5",
-        "matplotlib>=3.10.0",
-        "types-requests>=2.32.0.20241016",
-    ]
+    "ipykernel>=6.29.5",
+    "pdoc>=15.0.1",
+    "types-requests>=2.32.0.20241016",
+]
