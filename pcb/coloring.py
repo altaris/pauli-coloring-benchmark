@@ -46,30 +46,23 @@ def _smallest_int_not_in(iterable: Iterable[int]) -> int:
     return i
 
 
-def _term_groups(operator: SparsePauliOp) -> dict[int, dict[str, set[int]]]:
+def _term_groups(operator: SparsePauliOp) -> dict[int, set[int]]:
     """
-    Create a two-level dictionary that groups terms by Pauli operator (except
-    $I$) and qubit. For example, if index `i` is in `groups[qubit][pauli]`,
-    then term `i` has the Pauli operator `pauli` at qubit `qubit`.
+    Create a dictionary that groups terms by qubit on which they act. In other
+    words, if index `i` is in `groups[qubit]`, then term `i` has a non-$I$ Pauli
+    operator at `qubit`.
 
-    The keys of the returned dict are among ${0, ..., N_{qubits}}$, and each
-    value dictionary has keys among `{"X", "Y", "Z"}`.
+    The keys of the returned dict are among ${0, ..., N_{qubits}}$.
 
     >>> op = SparsePauliOp.from_list([("IIXXII", 1), ("XZIXII", 1)])
     >>> _term_groups(op)
-    defaultdict(...,
-        {2: defaultdict(set, {'X': {0, 1}}),
-         3: defaultdict(set, {'X': {0}}),
-         4: defaultdict(set, {'Z': {1}}),
-         5: defaultdict(set, {'X': {1}})})
+    defaultdict(set, {2: {0, 1}, 3: {0}, 4: {1}, 5: {1}})
     """
     terms = operator.to_sparse_list()
-    groups: dict[int, dict[str, set[int]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    for term_idx, (pauli_str, indices, _) in enumerate(terms):
-        for qubit, pauli in zip(indices, pauli_str):
-            groups[qubit][pauli].add(term_idx)
+    groups: dict[int, set[int]] = defaultdict(set)
+    for term_idx, (_, indices, _) in enumerate(terms):
+        for qubit in indices:
+            groups[qubit].add(term_idx)
     return groups
 
 
@@ -80,13 +73,11 @@ def degree_reordering(
     TODO: cite paper
     """
 
-    def _degree(pauli_str: str, indices: list[int]) -> int:
+    def _degree(indices: list[int]) -> int:
         d = 0
-        for pauli, qubit in zip(pauli_str, indices):
-            for k, v in groups[qubit].items():
-                if k == pauli:
-                    continue
-                d += len(v)
+        for qubit in indices:
+            if qubit in groups:
+                d += len(groups[qubit]) - 1
         return d
 
     operator = gate.operator
@@ -94,14 +85,11 @@ def degree_reordering(
     terms, groups = operator.to_sparse_list(), _term_groups(operator)
     color = {term_idx: 0 for term_idx in range(len(terms))}
     everything = list(enumerate(terms))
-    everything.sort(key=lambda e: _degree(e[1][0], e[1][1]), reverse=True)
-    for term_idx, (pauli_str, indices, _) in everything:
+    everything.sort(key=lambda e: _degree(e[1][1]), reverse=True)
+    for term_idx, (_, indices, _) in everything:
         taken: set[int] = set()
-        for qubit, pauli in zip(indices, pauli_str):
-            for k, v in groups[qubit].items():
-                if k == pauli:
-                    continue
-                taken.update(color[i] for i in v)
+        for qubit in indices:
+            taken.update(color[i] for i in groups[qubit] if i != term_idx)
         color[term_idx] = _smallest_int_not_in(taken)
     return _reorder_by_colors(gate, color)
 
@@ -120,12 +108,11 @@ def saturation_reordering(
         raise RuntimeError("All nodes are colored baka")
 
     def _neighbors(i: int) -> Generator[int, None, None]:
-        pauli_str, indices, _ = terms[i]
-        for qubit, pauli in zip(indices, pauli_str):
-            for k, v in groups[qubit].items():
-                if k == pauli:
-                    continue
-                yield from v
+        _, indices, _ = terms[i]
+        for qubit in indices:
+            for j in groups[qubit]:
+                if j != i:
+                    yield j
 
     operator = gate.operator
     assert isinstance(operator, SparsePauliOp)
