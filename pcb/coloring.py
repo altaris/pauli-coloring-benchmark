@@ -70,7 +70,9 @@ def degree_reordering(
     gate: PauliEvolutionGate,
 ) -> tuple[PauliEvolutionGate, Coloring]:
     """
-    TODO: cite paper
+    Algorithm 1.2.2.2 of
+
+        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of Graphs.” (2008).
     """
 
     def _degree(indices: list[int]) -> int:
@@ -98,7 +100,9 @@ def saturation_reordering(
     gate: PauliEvolutionGate,
 ) -> tuple[PauliEvolutionGate, Coloring]:
     """
-    TODO: cite paper
+    Algorithm 1.2.2.8 of
+
+        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of Graphs.” (2008).
     """
 
     def _first_uncolored() -> int:
