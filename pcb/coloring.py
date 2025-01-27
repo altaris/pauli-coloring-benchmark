@@ -1,7 +1,8 @@
 """Coloring and reordering of Pauli terms for `PauliEvolutionGate`s."""
 
 from collections import defaultdict
-from typing import Generator, Iterable, Literal, TypeAlias, TypeVar
+from pathlib import Path
+from typing import Any, Generator, Iterable, Literal, TypeAlias, TypeVar
 
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
@@ -10,6 +11,36 @@ _A = TypeVar("_A")
 _B = TypeVar("_B")
 
 Coloring: TypeAlias = dict[int, list[int]]
+
+
+def _gate_to_c(
+    gate: PauliEvolutionGate,
+) -> tuple[Any, Any, Any, Any]:
+    import ctypes
+
+    operator = gate.operator
+    assert isinstance(operator, SparsePauliOp)
+    terms = operator.to_sparse_list()
+    qb_idx, trm_start_idx, n_qb_trm = [], [], []
+    curr_start_idx = 0
+    for _, qubits, _ in terms:
+        trm_start_idx.append(curr_start_idx)
+        qb_idx.extend(qubits)
+        n_qb_trm.append(len(qubits))
+        curr_start_idx += len(qubits)
+    return (
+        (ctypes.c_int * len(qb_idx))(*qb_idx),
+        (ctypes.c_size_t * len(trm_start_idx))(*trm_start_idx),
+        (ctypes.c_size_t * len(n_qb_trm))(*n_qb_trm),
+        len(terms),
+    )
+
+
+def _invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
+    res = defaultdict(list)
+    for k, v in dct.items():
+        res[v].append(k)
+    return res
 
 
 def _reorder_by_colors(
@@ -27,13 +58,6 @@ def _reorder_by_colors(
         gate.num_qubits,
     )
     return PauliEvolutionGate(operator, gate.params[0]), coloring
-
-
-def _invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
-    res = defaultdict(list)
-    for k, v in dct.items():
-        res[v].append(k)
-    return res
 
 
 def _smallest_int_not_in(iterable: Iterable[int]) -> int:
@@ -96,6 +120,42 @@ def degree_reordering(
     return _reorder_by_colors(gate, color)
 
 
+def degree_reordering_c(
+    gate: PauliEvolutionGate,
+) -> tuple[PauliEvolutionGate, Coloring]:
+    """
+    Algorithm 1.2.2.2 of
+
+        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of Graphs.” (2008).
+    """
+    import ctypes
+
+    # TODO: use .dll for Windows
+    library_path = Path(__file__).parent / "lib" / "coloring.so"
+    c_module = ctypes.CDLL(str(library_path))
+    _degree_coloring = c_module.degree_coloring
+    _degree_coloring.argtypes = [
+        ctypes.POINTER(ctypes.c_int),  # qb_idx
+        ctypes.POINTER(ctypes.c_size_t),  # trm_start_idx
+        ctypes.POINTER(ctypes.c_size_t),  # n_qb_trm
+        ctypes.c_size_t,  # n_trm
+        ctypes.c_size_t,  # n_qb
+        ctypes.POINTER(ctypes.c_int),  # trm_col
+    ]
+    _degree_coloring.restype = None
+    qb_idx, trm_start_idx, n_qb_trm, n_trm = _gate_to_c(gate)
+    trm_col = (ctypes.c_int * n_trm)()
+    _degree_coloring(
+        ctypes.cast(qb_idx, ctypes.POINTER(ctypes.c_int)),
+        ctypes.cast(trm_start_idx, ctypes.POINTER(ctypes.c_size_t)),
+        ctypes.cast(n_qb_trm, ctypes.POINTER(ctypes.c_size_t)),
+        n_trm,
+        gate.num_qubits,
+        ctypes.cast(trm_col, ctypes.POINTER(ctypes.c_int)),
+    )
+    return _reorder_by_colors(gate, dict(enumerate(trm_col)))
+
+
 def saturation_reordering(
     gate: PauliEvolutionGate,
 ) -> tuple[PauliEvolutionGate, Coloring]:
@@ -149,7 +209,7 @@ def saturation_reordering(
 
 def reorder(
     gate: PauliEvolutionGate,
-    method: Literal["degree", "saturation"],
+    method: Literal["degree", "degree_c", "saturation"],
 ) -> PauliEvolutionGate:
     """
     Applies Pauli coloring to reorder the Pauli terms in the underlying operator
@@ -160,6 +220,10 @@ def reorder(
     * `saturation`:
     * `independent_set`: Most expensive. TODO: implement
     """
-    f = degree_reordering if method == "degree" else saturation_reordering
-    gate, _ = f(gate)
+    methods = {
+        "degree": degree_reordering,
+        "degree_c": degree_reordering_c,
+        "saturation": saturation_reordering,
+    }
+    gate, _ = methods[method](gate)
     return gate

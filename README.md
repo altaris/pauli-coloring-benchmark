@@ -18,14 +18,20 @@
    uv sync
    ```
 
-3. Build the index. This is a CSV file that lists all the Hamiltonian ZIP files
+3. Build binaries (requires `gcc`)
+
+   ```sh
+   make dll
+   ```
+
+4. Build the index. This is a CSV file that lists all the Hamiltonian ZIP files
    present in the HamLib website.
 
    ```sh
    uv run python -m pcb build-index out/index.csv
    ```
 
-4. Download the Hamiltonian ZIP files.
+5. Download the Hamiltonian ZIP files.
 
    ```sh
    uv run python -m pcb download out/index.csv out/ham
@@ -33,7 +39,7 @@
    uv run python -m pcb download out/index.csv out/ham --prefix discreteoptimization/tsp
    ```
 
-5. Run the benchmark.
+6. Run the benchmark.
 
    ```sh
    uv run python -m pcb benchmark out/index.csv out/ham out/results

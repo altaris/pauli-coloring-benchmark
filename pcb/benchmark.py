@@ -93,6 +93,7 @@ def benchmark(
             [
                 "none",
                 "degree",
+                "degree_c",
                 "saturation",
                 # "independent_set",
             ],

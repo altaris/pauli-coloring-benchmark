@@ -1,4 +1,5 @@
 SRC_PATH 	= pcb
+LIB_PATH 	= $(SRC_PATH)/lib
 DOCS_PATH 	= docs
 
 PDOC		= pdoc -d google --math
@@ -9,6 +10,12 @@ RUFF_EXCL   = --exclude '*.ipynb' --exclude 'old/' --exclude 'playground.py'
 .ONESHELL:
 
 all: format typecheck lint
+
+dll:
+	gcc $(LIB_PATH)/coloring.c -shared -o $(LIB_PATH)/coloring.so -O3
+
+dll-debug:
+	gcc $(LIB_PATH)/coloring.c -shared -o $(LIB_PATH)/coloring.so -fPIC -g -O0
 
 .PHONY: docs
 docs:
@@ -27,11 +34,8 @@ format:
 
 .PHONY: lint
 lint:
-	uvx ruff check $(RUFF_EXCL)
-
-.PHONY: lint-fix
-lint:
 	uvx ruff check --fix $(RUFF_EXCL)
+	clang-format --style=Microsoft -i $(LIB_PATH)/*.c
 
 .PHONY: typecheck
 typecheck:
