@@ -29,6 +29,7 @@ jupyter = [
             "ipywidgets>=8.1.5",
             "jupyter-black>=0.4.0",
             "matplotlib>=3.10.0",
+            "pylatexenc>=2.10",
             "seaborn>=0.13.2",
 ]
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file-format
