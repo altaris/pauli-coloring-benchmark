@@ -162,6 +162,7 @@ struct dict *degree_dict(const struct dict *qb_trm, size_t n_trm, size_t n_qb)
             *p += qb_trm->length[qb] - 1;
         }
     }
+    return trm_deg;
 }
 
 // ============================================================================
