@@ -109,9 +109,12 @@ def benchmark(
                     "trial": i,
                 }
             )
+            result_file_path = output_dir / "jobs" / f"{jid}.json"
+            if result_file_path.is_file():
+                continue
             f = cached(
                 _bench_one,
-                output_dir / "jobs" / f"{jid}.json",
+                result_file_path,
                 extra={"hid": hid},
             )
             kw = {
