@@ -12,9 +12,9 @@ from loguru import logger as logging
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
-from .coloring import reorder
 from .hamlib import open_hamiltonian_file
 from .qiskit import to_evolution_gate
+from .reordering import reorder
 from .utils import cached, hash_dict
 
 
