@@ -44,16 +44,18 @@ def invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
     return res
 
 
-def is_ising(gate: PauliEvolutionGate) -> bool:
+def is_ising(gate: PauliEvolutionGate, transverse_ok: bool = False) -> bool:
     """
     Wether the Hamiltonian underpinning the evolution gate is an Ising
-    Hamiltonian.
+    Hamiltonian. Transverse field Ising Hamiltonians can also be included.
     """
     operator = gate.operator
     assert isinstance(operator, SparsePauliOp)
-    edges = set()
+    edges, acceptable_strs = set(), {"Z", "ZZ"}
+    if transverse_ok:
+        acceptable_strs.add("X")
     for pauli_str, qubits, *_ in operator.to_sparse_list():
-        if not (pauli_str == "Z" or pauli_str == "ZZ"):
+        if pauli_str not in acceptable_strs:
             return False
         qubits = tuple(sorted(qubits))
         if qubits in edges:
