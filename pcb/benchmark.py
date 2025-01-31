@@ -22,7 +22,9 @@ def _bench_one(
     path: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
-    coloring: Literal["degree", "saturation", "none"],
+    coloring: Literal[
+        "degree_c", "degree", "misra_gries", "saturation", "none"
+    ],
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -94,8 +96,8 @@ def benchmark(
                 "none",
                 "degree",
                 "degree_c",
+                # "misra_gries",
                 "saturation",
-                # "independent_set",
             ],
             range(n_trials),
         )

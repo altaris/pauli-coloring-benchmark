@@ -44,6 +44,24 @@ def invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
     return res
 
 
+def is_ising(gate: PauliEvolutionGate) -> bool:
+    """
+    Wether the Hamiltonian underpinning the evolution gate is an Ising
+    Hamiltonian.
+    """
+    operator = gate.operator
+    assert isinstance(operator, SparsePauliOp)
+    edges = set()
+    for pauli_str, qubits, *_ in operator.to_sparse_list():
+        if not (pauli_str == "Z" or pauli_str == "ZZ"):
+            return False
+        qubits = tuple(sorted(qubits))
+        if qubits in edges:
+            return False
+        edges.add(qubits)
+    return True
+
+
 def reorder_gate_by_colors(
     gate: PauliEvolutionGate, color_dct: dict[int, int]
 ) -> tuple[PauliEvolutionGate, Coloring]:
@@ -64,7 +82,7 @@ def reorder_gate_by_colors(
 def smallest_int_not_in(iterable: Iterable[int]) -> int:
     """Returns the smallest non-negative integer not in `iterable`."""
     i = 0
-    for j in sorted(list(iterable)):
+    for j in sorted(list(set(iterable))):
         if j > i:
             return i
         i += 1
