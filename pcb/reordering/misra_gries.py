@@ -19,8 +19,7 @@ See also:
     https://en.wikipedia.org/wiki/Misra_%26_Gries_edge_coloring_algorithm
 """
 
-from itertools import combinations
-from typing import TypeVar
+from typing import Callable, TypeVar
 
 import networkx as nx
 from qiskit.circuit.library import PauliEvolutionGate
@@ -66,22 +65,6 @@ def _invert_cdx_path(
         g.edges[e]["color"] = c if g.edges[e]["color"] == d else d
 
 
-def _is_fan_graph_valid_edge(
-    g: nx.Graph, e1: tuple[int, int], e2: tuple[int, int]
-) -> bool:
-    """
-    `e1` and `e2` are edges in the interaction graph `g` and must share the same
-    first endpoint, say `e1 = (v, w1)` and `e2 = (v, w2)`. This function returns
-    `True` if the color of `e2` is free for `w1`. If `e2` is uncolored, this
-    returns `False`.
-    """
-    c2 = g.edges[e2].get("color")
-    if c2 is None:
-        return False
-    return _is_free(g, e1[1], c2)
-    # return c2 not in _incident_colors(g, e1[1])
-
-
 def _is_free(g: nx.Graph, v: int, c: int) -> bool:
     """
     Wether an edge incident to `v` has color `c`. This is equivalent to
@@ -93,22 +76,28 @@ def _is_free(g: nx.Graph, v: int, c: int) -> bool:
     return True
 
 
-def _longest_path(g: nx.Graph, v: _T) -> list[_T]:
-    """Longest path of distinct nodes (no loops), found by DFS"""
-    longest, to_process = [v], [[v]]
-    while to_process:
-        path = to_process.pop()
-        tip, can_be_extended = path[-1], False
-        for b in g.neighbors(tip):
-            if b not in path:
-                to_process.append(path + [b])
-                can_be_extended = True
-        if not can_be_extended and len(path) > len(longest):
-            longest = path
-    return longest
+def _longest_path(
+    nodes: set[int],
+    start: int,
+    edge_predicate: Callable[[int, int], bool],
+) -> list[int]:
+    """
+    Returns a maximal path starting from `start` in a directed graph whose
+    vertices are `nodes`, and whose edges are given by `edge_predicate`.
+    "Maximal" means that it cannot be extended, not that it is the longest
+    possible. Using a predicate instead of building the graph explicitely can be
+    more efficient.
+
+    Since cycles are not allowed, it's okay if `start` is not in `nodes`.
+    """
+    path = [start]
+    valid = lambda w: w not in path and edge_predicate(path[-1], w)
+    while candidates := list(filter(valid, nodes)):
+        path.append(candidates[0])
+    return path
 
 
-def _max_cdx_path(
+def _maximal_cdx_path(
     g: nx.Graph, c: int, d: int, v: int
 ) -> list[tuple[int, int]]:
     """
@@ -128,19 +117,23 @@ def _max_cdx_path(
     return path[1:]  # Remove the initial self-loop
 
 
-def _max_fan(g: nx.Graph, e: tuple[int, int]) -> list[tuple[int, int]]:
-    """Say `e = (v, w)`. Returns the largest fan of `v` starting with `e`."""
-    fan_graph, v = nx.DiGraph(), e[0]
-    fan_graph.add_nodes_from((v, w) for w in g.neighbors(v))
-    for e1, e2 in combinations(fan_graph.nodes, 2):
-        if _is_fan_graph_valid_edge(g, e1, e2):
-            fan_graph.add_edge(e1, e2)
-        if _is_fan_graph_valid_edge(g, e2, e1):  # pylint: disable=arguments-out-of-order
-            fan_graph.add_edge(e2, e1)
-    return _longest_path(fan_graph, e)
+def _maximal_fan(g: nx.Graph, e: tuple[int, int]) -> list[tuple[int, int]]:
+    """
+    Say `e = (v, w)`. Returns a maximal fan of `v` starting with `e`. It's
+    important to node that this fan might not be the largest.
+    """
+
+    def _edge_predicate(w1: int, w2: int) -> bool:
+        c = g.edges[(e[0], w2)].get("color")
+        return c is not None and _is_free(g, w1, c)
+
+    longest: list[int] = _longest_path(
+        set(g.neighbors(e[0])), e[1], _edge_predicate
+    )
+    return [(e[0], w) for w in longest]  # return fan as a list of edges
 
 
-def _max_subfan(
+def _maximal_subfan(
     g: nx.Graph, fan: list[tuple[int, int]], d: int
 ) -> list[tuple[int, int]]:
     """
@@ -177,14 +170,14 @@ def misra_gries(g: nx.Graph) -> nx.Graph:
     uncolored = list(g.edges)
     for _ in range(len(uncolored)):
         (v, w) = e = uncolored.pop()
-        fan = _max_fan(g, e)
+        fan = _maximal_fan(g, e)
         if len(fan) <= 1:
             g.edges[e]["color"] = _free_color(g, w)
             continue
         c, d = _free_color(g, v), _free_color(g, fan[-1][1])
-        cdxp = _max_cdx_path(g, c, d, v)
+        cdxp = _maximal_cdx_path(g, c, d, v)
         _invert_cdx_path(g, cdxp, c, d)
-        fan = _max_subfan(g, fan, d)
+        fan = _maximal_subfan(g, fan, d)
         _rotate_fan(g, fan)
         g.edges[fan[-1]]["color"] = d
     g.add_edges_from(self_loops)
