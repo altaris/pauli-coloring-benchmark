@@ -89,6 +89,24 @@ def build_index(hamlib_url: str, output_csv: TextIO) -> None:
 
 
 @main.command()
+@click.argument("output_dir", type=Path)
+def consolidate(output_dir: Path) -> None:
+    """
+    Consolidates benchmark results .json files in OUTPUT_DIR/jobs into a single
+    .csv file in OUTPUT_DIR/results.csv.
+    """
+    from datetime import datetime
+
+    from .benchmark import consolidate as _consolidate
+
+    logging.info("Consolidating benchmark results in: {}", output_dir)
+    start = datetime.now()
+    df = _consolidate(output_dir / "jobs")
+    df.to_csv(output_dir / "results.csv", index=False)
+    logging.info("Done in: {}", datetime.now() - start)
+
+
+@main.command()
 @click.argument("index_csv", type=click.File("r"))
 @click.argument("output_dir", type=Path)
 @click.option("--prefix", type=str, default="")

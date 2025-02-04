@@ -139,9 +139,9 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
     Gather all the output JSON files produced by `_bench_one` into a single
     dataframe
     """
-    logging.info("Consolidating results from {}", jobs_dir)
     jobs_dir, rows = Path(jobs_dir), []
-    for file in tqdm(jobs_dir.glob("*.json"), desc="Consolidating"):
+    progress = tqdm(jobs_dir.glob("*.json"), desc="Consolidating", leave=False)
+    for file in progress:
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))
     results = pd.DataFrame(rows)
