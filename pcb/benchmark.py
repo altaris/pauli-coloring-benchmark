@@ -103,6 +103,7 @@ def benchmark(
                 # "degree_c",
                 # "misra_gries",
                 "saturation",
+                "simplicial",
             ],
             range(n_trials),
         )
@@ -116,9 +117,16 @@ def benchmark(
                     "trial": i,
                 }
             )
-            result_file_path = output_dir / "jobs" / f"{jid}.json"
+            result_file_path = (
+                output_dir
+                / "jobs"
+                / jid[:2]  # spread files in subdirs
+                / jid[2:4]
+                / f"{jid}.json"
+            )
             if result_file_path.is_file():
                 continue
+            result_file_path.parent.mkdir(parents=True, exist_ok=True)
             f = cached(
                 _bench_one,
                 result_file_path,
@@ -145,7 +153,9 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
     dataframe
     """
     jobs_dir, rows = Path(jobs_dir), []
-    progress = tqdm(jobs_dir.glob("*.json"), desc="Consolidating", leave=False)
+    progress = tqdm(
+        jobs_dir.glob("**/*.json"), desc="Consolidating", leave=False
+    )
     for file in progress:
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))
