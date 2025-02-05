@@ -14,27 +14,6 @@ from pcb.reordering.utils import (
 )
 
 
-def is_3sat(gate: PauliEvolutionGate) -> bool:
-    """
-    A 3SAT Hamiltonian must
-    * only contain terms of the form $Z_i$, $Z_i Z_j$, or $Z_i Z_j Z_k$; and
-    * every tuple `(i,)`, `(i, j)` and `(i, j, k)` from the terms above is
-      unique.
-    This is a heuristic check, and probably not correct (doesn't exclude
-    certain non-3SAT Hamiltonians).
-    """
-    assert isinstance(gate.operator, SparsePauliOp)  # for typechecking
-    simplices: set[tuple[int, ...]] = set()
-    for pstr, qs, _ in gate.operator.to_sparse_list():
-        if not (set(list(pstr)) == {"Z"} and len(pstr) in [1, 2, 3]):
-            return False
-        qs = tuple(sorted(qs))
-        if qs in simplices:
-            return False
-        simplices.add(qs)
-    return True
-
-
 def simplicial_reordering(
     gate: PauliEvolutionGate,
 ) -> tuple[PauliEvolutionGate, Coloring]:
