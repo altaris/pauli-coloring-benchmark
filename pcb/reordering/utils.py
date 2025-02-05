@@ -18,9 +18,8 @@ def gate_to_c(
     """Converts a `PauliEvolutionGate` to a format suitable for C."""
     import ctypes
 
-    operator = gate.operator
-    assert isinstance(operator, SparsePauliOp)
-    terms = operator.to_sparse_list()
+    assert isinstance(gate.operator, SparsePauliOp)
+    terms = gate.operator.to_sparse_list()
     qb_idx, trm_start_idx, n_qb_trm = [], [], []
     curr_start_idx = 0
     for _, qubits, _ in terms:
@@ -49,12 +48,11 @@ def is_ising(gate: PauliEvolutionGate, transverse_ok: bool = False) -> bool:
     Wether the Hamiltonian underpinning the evolution gate is an Ising
     Hamiltonian. Transverse field Ising Hamiltonians can also be included.
     """
-    operator = gate.operator
-    assert isinstance(operator, SparsePauliOp)
+    assert isinstance(gate.operator, SparsePauliOp)
     edges, acceptable_strs = set(), {"Z", "ZZ"}
     if transverse_ok:
         acceptable_strs.add("X")
-    for pauli_str, qubits, *_ in operator.to_sparse_list():
+    for pauli_str, qubits, *_ in gate.operator.to_sparse_list():
         if pauli_str not in acceptable_strs:
             return False
         qubits = tuple(sorted(qubits))

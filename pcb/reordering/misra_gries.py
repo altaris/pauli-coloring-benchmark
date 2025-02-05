@@ -27,7 +27,6 @@ from qiskit.quantum_info import SparsePauliOp
 
 from .utils import (
     Coloring,
-    is_ising,
     reorder_gate_by_colors,
     smallest_int_not_in,
 )
@@ -47,12 +46,18 @@ def _free_color(g: nx.Graph, v1: int, v2: int | None = None) -> int:
 
 
 def _incident_colors(g: nx.Graph, v: int) -> set[int]:
-    """Returns the colors of the colored edges incident to `v`"""
-    return set(
+    """
+    Returns the colors of the colored edges incident to `v`. If `v` is itself
+    colored, its color is also included in the returned set.
+    """
+    s = set(
         g.edges[(v, w)]["color"]
         for w in g.neighbors(v)
         if "color" in g.edges[(v, w)]
     )
+    if (c := g.nodes[v].get("color")) is not None:
+        s.add(c)
+    return s
 
 
 def _invert_cdx_path(
@@ -67,9 +72,12 @@ def _invert_cdx_path(
 
 def _is_free(g: nx.Graph, v: int, c: int) -> bool:
     """
-    Wether an edge incident to `v` has color `c`. This is equivalent to
-    `c not in _incident_colors(g, v)` but slightly more efficient in principle.
+    Returns `False` if `v` or an edge incident to `v` has color `c`. This is
+    equivalent to `c not in _incident_colors(g, v)` but slightly more efficient
+    in principle.
     """
+    if g.nodes[v].get("color") == c:
+        return False
     for w in g.neighbors(v):
         if g.edges[(v, w)].get("color") == c:
             return False
@@ -164,6 +172,9 @@ def _rotate_fan(g: nx.Graph, fan: list[tuple[int, int]]) -> None:
 def misra_gries(g: nx.Graph) -> nx.Graph:
     """
     The Misra-Gries edge coloring algorithm on a graph with possible self-loops.
+    If some nodes of `g` are themselve colored, edge colors won't clash with
+    node colors, i.e. edges incident to a colored node will have colors distinct
+    from that of the node (and each other of course).
     """
     self_loops = list(nx.selfloop_edges(g))
     g.remove_edges_from(self_loops)
@@ -202,13 +213,13 @@ def misra_gries_reordering(
         """
         return tuple(e) if len(e) == 2 else (e[0], e[0])  # type: ignore
 
-    if not is_ising(gate):
-        raise ValueError(
-            "The input gate's Hamiltonian is not Ising Hamiltonian."
-        )
-    operator = gate.operator
-    assert isinstance(operator, SparsePauliOp)
-    terms = operator.to_sparse_list()
+    # if not is_ising(gate):
+    #     raise ValueError(
+    #         "The input gate's Hamiltonian is not Ising Hamiltonian."
+    #     )
+
+    assert isinstance(gate.operator, SparsePauliOp)
+    terms = gate.operator.to_sparse_list()
     interaction_graph = nx.Graph()
     interaction_graph.add_nodes_from(range(gate.num_qubits))
     interaction_graph.add_edges_from(
