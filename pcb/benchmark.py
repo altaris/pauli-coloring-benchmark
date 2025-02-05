@@ -23,7 +23,12 @@ def _bench_one(
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
     coloring: Literal[
-        "degree_c", "degree", "misra_gries", "saturation", "none"
+        "degree_c",
+        "degree",
+        "misra_gries",
+        "none",
+        "saturation",
+        "simplicial",
     ],
 ) -> dict:
     """
@@ -95,7 +100,7 @@ def benchmark(
             [
                 "none",
                 "degree",
-                "degree_c",
+                # "degree_c",
                 # "misra_gries",
                 "saturation",
             ],
