@@ -3,6 +3,7 @@
 from collections import defaultdict
 from typing import Any, Iterable, TypeAlias, TypeVar
 
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
@@ -33,6 +34,18 @@ def gate_to_c(
         (ctypes.c_size_t * len(n_qb_trm))(*n_qb_trm),
         len(terms),
     )
+
+
+def coloring_to_array(coloring: Coloring) -> np.ndarray:
+    """
+    Converts a coloring `dict[int, list[int]]` to a numpy array `c`, where
+    `c[i] = k` means that term `i` has colour `k`, i.e. `i in coloring[k]`.
+    """
+    size = max(max(v) for v in coloring.values()) + 1
+    arr = np.empty(size)
+    for k, v in coloring.items():
+        arr[v] = k
+    return arr
 
 
 def invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:

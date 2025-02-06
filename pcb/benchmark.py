@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from itertools import product
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -15,6 +15,7 @@ from tqdm import tqdm
 from .hamlib import open_hamiltonian_file
 from .qiskit import to_evolution_gate
 from .reordering import reorder
+from .reordering.utils import coloring_to_array
 from .utils import cached, hash_dict
 
 
@@ -22,7 +23,7 @@ def _bench_one(
     path: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
-    coloring: Literal[
+    method: Literal[
         "degree_c",
         "degree",
         "misra_gries",
@@ -30,6 +31,8 @@ def _bench_one(
         "saturation",
         "simplicial",
     ],
+    order: int = 1,
+    n_timesteps: int = 1,
 ) -> dict:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
@@ -38,30 +41,54 @@ def _bench_one(
 
     The returned dict has the following columns:
     - `trotterization`: as passed,
-    - `coloring`: as passed,
-    - `n_terms`: number of terms in the underlying Pauli operator,
+    - `method`: as passed,
+    - `n_terms`: number of terms in the underlying Pauli operator (this is of
+      course the same before and after reordering),
     - `depth`: the depth of the circuit obtained by Trotterization,
-    - `time`: time taken by Trotterization (in milliseconds).
+    - `order`: order of the Trotterization, ignored if `trotterization` is
+      `lie_trotter`,
+    - `n_timesteps`: called `reps` in Qiskit,
+    - `reordering_time`: in milliseconds,
+    - `synthesis_time`: in milliseconds.
 
     All Trotterizations are done with `reps=1`.
     """
+    shuffle = method != "none"
     with open_hamiltonian_file(path) as fp:
-        hamiltonian: bytes = fp[key][()]
-    gate = to_evolution_gate(hamiltonian, shuffle=True)
-    Trotter = LieTrotter if trotterization == "lie_trotter" else SuzukiTrotter
-    start = datetime.now()
-    if coloring != "none":
-        gate = reorder(gate, coloring)
-    synthesizer = Trotter(reps=1, preserve_order=True)
-    circuit = synthesizer.synthesize(gate)
-    time = (datetime.now() - start).microseconds / 1000
-    result = {
-        "trotterization": trotterization,
-        "coloring": coloring,
+        gate = to_evolution_gate(fp[key][()], shuffle=shuffle)
+
+    result: dict[str, Any] = {
+        "method": method,
         "n_terms": len(gate.operator),
-        "depth": circuit.depth(),
-        "time": time,
+        "n_timesteps": n_timesteps,
+        "order": order,
+        "trotterization": trotterization,
     }
+
+    reordering_time = 0.0
+    if method != "none":
+        start = datetime.now()
+        gate, coloring = reorder(gate, method)
+        reordering_time = (datetime.now() - start).microseconds / 1000
+        result["coloring"] = coloring_to_array(coloring)
+
+    start = datetime.now()
+    if trotterization == "lie_trotter":
+        synthesizer = LieTrotter(reps=n_timesteps, preserve_order=True)
+    else:  # trotterization == "suzuki_trotter"
+        synthesizer = SuzukiTrotter(
+            reps=n_timesteps, order=order, preserve_order=True
+        )
+    circuit = synthesizer.synthesize(gate)
+    synthesis_time = (datetime.now() - start).microseconds / 1000
+
+    result.update(
+        {
+            "depth": circuit.depth(),
+            "reordering_time": reordering_time,
+            "synthesis_time": synthesis_time,
+        }
+    )
     return result
 
 
@@ -99,21 +126,23 @@ def benchmark(
             ],
             [
                 "none",
-                "degree",
+                # "degree",
                 # "degree_c",
                 # "misra_gries",
                 "saturation",
                 "simplicial",
             ],
+            [2, 4],  # order
+            [1],  # n_timesteps
             range(n_trials),
         )
-        for trotterization, coloring, i in everything:
+        for trotterization, method, order, n_timesteps, i in everything:
             hid = row["dir"] + row["file"] + "/" + row["key"]
             jid = hash_dict(
                 {
                     "hid": hid,
                     "trotterization": trotterization,
-                    "coloring": coloring,
+                    "method": method,
                     "trial": i,
                 }
             )
@@ -126,17 +155,18 @@ def benchmark(
             )
             if result_file_path.is_file():
                 continue
-            result_file_path.parent.mkdir(parents=True, exist_ok=True)
             f = cached(
                 _bench_one,
                 result_file_path,
-                extra={"hid": hid},
+                extra={"hid": hid, "jid": jid},
             )
             kw = {
-                "path": ham_path,
                 "key": row["key"],
+                "method": method,
+                "n_timesteps": n_timesteps,
+                "order": order,
+                "path": ham_path,
                 "trotterization": trotterization,
-                "coloring": coloring,
             }
             jobs.append(delayed(f)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
@@ -160,5 +190,6 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
         with open(file, "r", encoding="utf-8") as fp:
             rows.append(json.load(fp))
     results = pd.DataFrame(rows)
+    results.set_index("hid", inplace=True)
     logging.info("Consolidated {} job results", len(results))
     return results

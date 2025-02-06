@@ -4,7 +4,6 @@
 
 import os
 from pathlib import Path
-from typing import TextIO
 
 import click
 from loguru import logger as logging
@@ -38,7 +37,7 @@ def main(logging_level: str) -> None:
 @click.argument("ham_dir", type=Path)
 @click.argument("output_dir", type=Path)
 @click.option("--prefix", type=str, default="")
-@click.option("--n-trials", type=int, default=10)
+@click.option("--n-trials", type=int, default=5)
 @click.option("--n-jobs", type=int, default=32)
 def benchmark(
     index_db: Path,
@@ -49,8 +48,8 @@ def benchmark(
     n_jobs: int,
 ) -> None:
     """Runs a benchmark on some or all Hamiltonian files in the index"""
-    from datetime import datetime
     import sqlite3
+    from datetime import datetime
 
     import pandas as pd
 
@@ -93,8 +92,8 @@ def build_index(hamlib_url: str, index_db: Path) -> None:
     Builds the index of all Hamiltonian files in the HamLib website and writes
     it to a SQLite database, under table `index`.
     """
-    from datetime import datetime
     import sqlite3
+    from datetime import datetime
 
     from .hamlib import build_index as _build_index
 
@@ -119,8 +118,8 @@ def consolidate(output_dir: Path) -> None:
     Consolidates benchmark results .json files in OUTPUT_DIR/jobs into a single
     .csv file in OUTPUT_DIR/results.csv.
     """
-    from datetime import datetime
     import sqlite3
+    from datetime import datetime
 
     from .benchmark import consolidate as _consolidate
 
@@ -144,8 +143,8 @@ def consolidate(output_dir: Path) -> None:
 @click.option("--prefix", type=str, default="")
 def download(index_db: Path, output_dir: Path, prefix: str) -> None:
     """Downloads some or all Hamiltonian files in the index"""
-    from datetime import datetime
     import sqlite3
+    from datetime import datetime
 
     import pandas as pd
 
