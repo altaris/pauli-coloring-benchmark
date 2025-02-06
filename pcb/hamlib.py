@@ -89,10 +89,13 @@ def build_index(base_url: str) -> pd.DataFrame:
     This crawls the website to find all the CSV files. Each of them lists the
     Hamiltonian files in that directory. Then, this method essentially
     concatenates all of them. The returned dataframe has the following columns:
-    - `base_url`: As passed in argument,
-    - `dir`: e.g. `discreteoptimization/tsp/`
+    - `dir`: e.g. `discreteoptimization/tsp/` (note the training slash),
     - `file`: e.g. `TSP_Ncity-8.hdf5`,
     - `key`: e.g. `tsp_prob-a280_Ncity-8_enc-stdbinary`,
+    - `n_qubits`: e.g. `24`,
+    - `n_terms`: e.g. `449`.
+
+    The dataframe is indexed by the `dir` column.
     """
     data = []
     for url in _all_csv_urls(base_url):
@@ -100,16 +103,20 @@ def build_index(base_url: str) -> pd.DataFrame:
         df = pd.DataFrame(
             [
                 {
-                    "base_url": base_url,
                     "dir": urljoin(url, ".")[len(base_url) :],
                     "file": r["File"][:-5],  # Remove the trailing .hdf5
                     "key": r["Dataset"][1:],  # Remove the leading slash
+                    "n_qubits": r["nqubits"],
+                    "n_terms": r["terms"],
                 }
                 for _, r in df.iterrows()
             ]
         )
         data.append(df)
-    return pd.concat(data, ignore_index=True)
+    df = pd.concat(data, ignore_index=True)
+    df = df.astype({"n_qubits": int, "n_terms": int})
+    df.set_index("dir", inplace=True)
+    return df
 
 
 def download(
