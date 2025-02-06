@@ -6,6 +6,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Literal
 
+import h5py
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
@@ -16,11 +17,12 @@ from .hamlib import open_hamiltonian_file
 from .qiskit import to_evolution_gate
 from .reordering import reorder
 from .reordering.utils import coloring_to_array
-from .utils import cached, hash_dict
+from .utils import hash_dict
 
 
 def _bench_one(
-    path: str | Path,
+    ham_file: str | Path,
+    result_file: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
     method: Literal[
@@ -33,13 +35,13 @@ def _bench_one(
     ],
     order: int = 1,
     n_timesteps: int = 1,
-) -> dict:
+) -> None:
     """
     Compares Pauli coloring against direct Trotterization of the evolution
     operator of a given (serialized) Hamiltonian. The terms of underlying Pauli
     operator are shuffled before the comparison.
 
-    The returned dict has the following columns:
+    The output JSON file contains the following keys
     - `trotterization`: as passed,
     - `method`: as passed,
     - `n_terms`: number of terms in the underlying Pauli operator (this is of
@@ -51,10 +53,22 @@ def _bench_one(
     - `reordering_time`: in milliseconds,
     - `synthesis_time`: in milliseconds.
 
+    If `method` is not `none`, the output HDF5 file contains a dataset named
+    `coloring` containing the coloring vector. This file is created in the same
+    directory as the JSON file, and has the same name but with a `.hdf5`
+    extension.
+
     All Trotterizations are done with `reps=1`.
     """
-    shuffle = method != "none"
-    with open_hamiltonian_file(path) as fp:
+
+    ham_file = Path(ham_file)
+    result_file = Path(result_file)
+    if result_file.is_file():
+        return
+    result_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open_hamiltonian_file(ham_file) as fp:
+        shuffle = method != "none"
         gate = to_evolution_gate(fp[key][()], shuffle=shuffle)
 
     result: dict[str, Any] = {
@@ -70,7 +84,7 @@ def _bench_one(
         start = datetime.now()
         gate, coloring = reorder(gate, method)
         reordering_time = (datetime.now() - start).microseconds / 1000
-        result["coloring"] = coloring_to_array(coloring)
+        coloring_array = coloring_to_array(coloring)
 
     start = datetime.now()
     if trotterization == "lie_trotter":
@@ -89,7 +103,13 @@ def _bench_one(
             "synthesis_time": synthesis_time,
         }
     )
-    return result
+
+    with result_file.open("w", encoding="utf-8") as fp:
+        json.dump(result, fp)
+    if method != "none":
+        # coloring_array is defined
+        with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
+            fp.create_dataset("coloring", data=coloring_array)
 
 
 def benchmark(
@@ -128,50 +148,42 @@ def benchmark(
                 "none",
                 # "degree",
                 # "degree_c",
-                # "misra_gries",
+                "misra_gries",
                 "saturation",
-                "simplicial",
+                # "simplicial",
             ],
             [2, 4],  # order
             [1],  # n_timesteps
             range(n_trials),
         )
         for trotterization, method, order, n_timesteps, i in everything:
-            hid = row["dir"] + row["file"] + "/" + row["key"]
-            jid = hash_dict(
-                {
-                    "hid": hid,
-                    "trotterization": trotterization,
-                    "method": method,
-                    "trial": i,
-                }
-            )
-            result_file_path = (
+            kw = {
+                "ham_file": ham_path,
+                "key": row["key"],
+                "trotterization": trotterization,
+                "method": method,
+                "order": order,
+                "n_timesteps": n_timesteps,
+            }
+            jid = hash_dict({"kw": kw, "trial": i})  # unique job identifier
+            result_file = (
                 output_dir
                 / "jobs"
                 / jid[:2]  # spread files in subdirs
                 / jid[2:4]
                 / f"{jid}.json"
             )
-            if result_file_path.is_file():
+            if result_file.is_file():
                 continue
-            f = cached(
-                _bench_one,
-                result_file_path,
-                extra={"hid": hid, "jid": jid},
-            )
-            kw = {
-                "key": row["key"],
-                "method": method,
-                "n_timesteps": n_timesteps,
-                "order": order,
-                "path": ham_path,
-                "trotterization": trotterization,
-            }
-            jobs.append(delayed(f)(**kw))
+            kw["result_file"] = result_file
+            jobs.append(delayed(_bench_one)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
     executor = Parallel(
-        n_jobs=n_jobs, prefer="processes", timeout=3600 * 24, verbose=1
+        n_jobs=n_jobs,
+        prefer="processes",
+        timeout=3600 * 24,
+        verbose=1,
+        backend="loky",
     )
     executor(jobs)
     return consolidate(output_dir / "jobs")
