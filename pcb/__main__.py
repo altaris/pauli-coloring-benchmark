@@ -36,9 +36,26 @@ def main(logging_level: str) -> None:
 @click.argument("index_db", type=Path)
 @click.argument("ham_dir", type=Path)
 @click.argument("output_dir", type=Path)
-@click.option("--prefix", type=str, default="")
-@click.option("--n-trials", type=int, default=5)
-@click.option("--n-jobs", type=int, default=32)
+@click.option(
+    "--prefix",
+    type=str,
+    default="",
+    help=(
+        "Filter the Hamiltonians to benchmark by prefix. Example: "
+        "'binaryoptimization/maxcut'"
+    ),
+)
+@click.option("--n-trials", type=int, default=5, help="Defaults to 5")
+@click.option("--n-jobs", type=int, default=32, help="Defaults to 32")
+@click.option(
+    "--methods",
+    type=str,
+    default="degree,saturation",
+    help=(
+        "Comma-separated list of reordering methods to benchmark. Defaults to "
+        "'degree,saturation,none'"
+    ),
+)
 def benchmark(
     index_db: Path,
     ham_dir: Path,
@@ -46,6 +63,7 @@ def benchmark(
     prefix: str,
     n_trials: int,
     n_jobs: int,
+    methods: str,
 ) -> None:
     """Runs a benchmark on some or all Hamiltonian files in the index"""
     import sqlite3
@@ -73,6 +91,7 @@ def benchmark(
         n_trials=n_trials,
         prefix=prefix,
         n_jobs=n_jobs,
+        methods=methods.split(","),
     )
     df.to_csv(output_dir / "results.csv", index=False)
 
@@ -140,7 +159,15 @@ def consolidate(output_dir: Path) -> None:
 @main.command()
 @click.argument("index_db", type=Path)
 @click.argument("output_dir", type=Path)
-@click.option("--prefix", type=str, default="")
+@click.option(
+    "--prefix",
+    type=str,
+    default="",
+    help=(
+        "Filter the Hamiltonians to benchmark by prefix. Example: "
+        "'binaryoptimization/maxcut'"
+    ),
+)
 def download(index_db: Path, output_dir: Path, prefix: str) -> None:
     """Downloads some or all Hamiltonian files in the index"""
     import sqlite3

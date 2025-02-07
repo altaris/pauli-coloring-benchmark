@@ -119,6 +119,7 @@ def benchmark(
     n_trials: int = 10,
     prefix: str | None = None,
     n_jobs: int = 32,
+    methods: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Args:
@@ -128,11 +129,14 @@ def benchmark(
         output_dir (Path):
         n_trials (int, optional):
         prefix (str | None, optional): Filter the Hamiltonians to benchmark
+        methods (list[str] | None, optional): Reordering methods to benchmark.
+            If left as `None`, defaults to `["degree", "saturation", "none"]`.
     """
     ham_dir, output_dir = Path(ham_dir), Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if prefix:
         index = index[index["dir"].str.startswith(prefix)]
+    methods = methods or ["degree", "saturation", "none"]
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
@@ -144,14 +148,7 @@ def benchmark(
                 # "lie_trotter",
                 "suzuki_trotter",
             ],
-            [
-                "none",
-                # "degree",
-                # "degree_c",
-                "misra_gries",
-                "saturation",
-                # "simplicial",
-            ],
+            methods,
             [2, 4],  # order
             [1],  # n_timesteps
             range(n_trials),
