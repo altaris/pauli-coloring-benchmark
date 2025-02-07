@@ -19,6 +19,8 @@ from .reordering import reorder
 from .reordering.utils import coloring_to_array
 from .utils import hash_dict
 
+MIN_N_TERMS = 10  # Hamiltonians with fewer terms are not benchmarked
+
 
 def _bench_one(
     ham_file: str | Path,
@@ -117,7 +119,6 @@ def benchmark(
     ham_dir: str | Path,
     output_dir: str | Path,
     n_trials: int = 10,
-    prefix: str | None = None,
     n_jobs: int = 32,
     methods: list[str] | None = None,
 ) -> pd.DataFrame:
@@ -128,15 +129,22 @@ def benchmark(
             `.hdf5.zip`files.
         output_dir (Path):
         n_trials (int, optional):
-        prefix (str | None, optional): Filter the Hamiltonians to benchmark
         methods (list[str] | None, optional): Reordering methods to benchmark.
             If left as `None`, defaults to `["degree", "saturation", "none"]`.
     """
+    methods = methods or ["degree", "saturation", "none"]
     ham_dir, output_dir = Path(ham_dir), Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    if prefix:
-        index = index[index["dir"].str.startswith(prefix)]
-    methods = methods or ["degree", "saturation", "none"]
+
+    logging.debug("Number of Hamiltonians: {}", len(index))
+    index = index[index["n_terms"] >= MIN_N_TERMS]
+    logging.debug(
+        "Number of Hamiltonians after n_terms cutoff: {} (MIN_N_TERMS={})",
+        len(index),
+        MIN_N_TERMS,
+    )
+    index = index.sort_values("n_terms")
+
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
@@ -178,7 +186,7 @@ def benchmark(
     executor = Parallel(
         n_jobs=n_jobs,
         prefer="processes",
-        timeout=3600 * 24,
+        timeout=3600 * 24,  # 24h
         verbose=1,
         backend="loky",
     )

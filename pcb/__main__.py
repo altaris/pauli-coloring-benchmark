@@ -89,7 +89,6 @@ def benchmark(
         ham_dir=ham_dir,
         output_dir=output_dir,
         n_trials=n_trials,
-        prefix=prefix,
         n_jobs=n_jobs,
         methods=methods.split(","),
     )
