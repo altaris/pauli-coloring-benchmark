@@ -6,6 +6,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Literal
 
+import filelock
 import h5py
 import pandas as pd
 from joblib import Parallel, delayed
@@ -69,49 +70,57 @@ def _bench_one(
         return
     result_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open_hamiltonian_file(ham_file) as fp:
-        shuffle = method != "none"
-        gate = to_evolution_gate(fp[key][()], shuffle=shuffle)
-
-    result: dict[str, Any] = {
-        "method": method,
-        "n_terms": len(gate.operator),
-        "n_timesteps": n_timesteps,
-        "order": order,
-        "trotterization": trotterization,
-    }
-
-    reordering_time = 0.0
-    if method != "none":
-        start = datetime.now()
-        gate, coloring = reorder(gate, method)
-        reordering_time = (datetime.now() - start).microseconds / 1000
-        coloring_array = coloring_to_array(coloring)
-
-    start = datetime.now()
-    if trotterization == "lie_trotter":
-        synthesizer = LieTrotter(reps=n_timesteps, preserve_order=True)
-    else:  # trotterization == "suzuki_trotter"
-        synthesizer = SuzukiTrotter(
-            reps=n_timesteps, order=order, preserve_order=True
+    try:
+        lock = filelock.FileLock(
+            result_file.with_suffix(".lock"), blocking=False
         )
-    circuit = synthesizer.synthesize(gate)
-    synthesis_time = (datetime.now() - start).microseconds / 1000
+        with lock:
+            with open_hamiltonian_file(ham_file) as fp:
+                shuffle = method != "none"
+                gate = to_evolution_gate(fp[key][()], shuffle=shuffle)
 
-    result.update(
-        {
-            "depth": circuit.depth(),
-            "reordering_time": reordering_time,
-            "synthesis_time": synthesis_time,
-        }
-    )
+            result: dict[str, Any] = {
+                "method": method,
+                "n_terms": len(gate.operator),
+                "n_timesteps": n_timesteps,
+                "order": order,
+                "trotterization": trotterization,
+            }
 
-    with result_file.open("w", encoding="utf-8") as fp:
-        json.dump(result, fp)
-    if method != "none":
-        # coloring_array is defined
-        with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
-            fp.create_dataset("coloring", data=coloring_array)
+            reordering_time = 0.0
+            if method != "none":
+                start = datetime.now()
+                gate, coloring = reorder(gate, method)
+                reordering_time = (datetime.now() - start).microseconds / 1000
+                coloring_array = coloring_to_array(coloring)
+
+            start = datetime.now()
+            if trotterization == "lie_trotter":
+                synthesizer = LieTrotter(reps=n_timesteps, preserve_order=True)
+            else:  # trotterization == "suzuki_trotter"
+                synthesizer = SuzukiTrotter(
+                    reps=n_timesteps, order=order, preserve_order=True
+                )
+            circuit = synthesizer.synthesize(gate)
+            synthesis_time = (datetime.now() - start).microseconds / 1000
+
+            result.update(
+                {
+                    "depth": circuit.depth(),
+                    "reordering_time": reordering_time,
+                    "synthesis_time": synthesis_time,
+                }
+            )
+
+            with result_file.open("w", encoding="utf-8") as fp:
+                json.dump(result, fp)
+            if method != "none":
+                # coloring_array is defined
+                with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
+                    fp.create_dataset("coloring", data=coloring_array)
+
+    except filelock.Timeout:
+        pass
 
 
 def benchmark(

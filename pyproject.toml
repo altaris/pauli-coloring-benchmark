@@ -4,6 +4,7 @@
     dependencies = [
         "beautifulsoup4>=4.12.3",
         "click>=8.1.7",
+        "filelock>=3.17.0",
         "h5py>=3.12.1",
         "joblib>=1.4.2",
         "loguru>=0.7.2",
