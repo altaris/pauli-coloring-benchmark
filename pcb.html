@@ -45,8 +45,11 @@
 
             <h2>Contents</h2>
             <ul>
-  <li><a href="#pauli-coloring-benchmark">Pauli Coloring Benchmark</a></li>
-  <li><a href="#how-to-do-the-thing">How to do the thing?</a></li>
+  <li><a href="#pauli-coloring-benchmark">Pauli Coloring Benchmark</a>
+  <ul>
+    <li><a href="#how-to-do-the-thing">How to do the thing?</a></li>
+    <li><a href="#more-help">More help</a></li>
+  </ul></li>
   <li><a href="#changelog">Changelog</a></li>
 </ul>
 
@@ -77,11 +80,12 @@ pcb    </h1>
 
                         <div class="docstring"><h1 id="pauli-coloring-benchmark">Pauli Coloring Benchmark</h1>
 
-<p><img src="https://img.shields.io/badge/python-3-blue?logo=python" alt="Python 3" />
+<p><img src="https://img.shields.io/badge/python-3.13-blue?logo=python" alt="Python 3.13" />
 <a href="https://choosealicense.com/licenses/mit/"><img src="https://img.shields.io/badge/license-MIT-green" alt="License" /></a>
-<a href="https://pypi.org/project/black"><img src="https://img.shields.io/badge/style-black-black" alt="Code style" /></a></p>
+<a href="https://docs.astral.sh/ruff/"><img src="https://img.shields.io/badge/style-ruff-yellow?logo=ruff" alt="Code style" /></a>
+<a href="https://cedric.hothanh.fr/pauli-coloring-benchmark/pcb.html"><img src="https://img.shields.io/badge/Documentation-here-pink" alt="Documentation" /></a></p>
 
-<h1 id="how-to-do-the-thing">How to do the thing?</h1>
+<h2 id="how-to-do-the-thing">How to do the thing?</h2>
 
 <ol>
 <li><p>Install <a href="https://docs.astral.sh/uv/"><code>uv</code></a>.</p>
@@ -98,39 +102,56 @@ pcb    </h1>
 </code></pre>
 </div></li>
 
-<li><p>Build binaries (requires <code>gcc</code>)</p>
+<li><p>Build binaries (requires <code>gcc</code>). This is only required if you want to use the
+<code>degree_c</code> reordering method.</p>
 
 <div class="pdoc-code codehilite">
 <pre><span></span><code>make<span class="w"> </span>dll
 </code></pre>
 </div></li>
 
-<li><p>Build the index. This is a CSV file that lists all the Hamiltonian ZIP files
-present in the HamLib website.</p>
+<li><p>Build the index. This is a SQlite3 file that lists all the Hamiltonian from
+all the <code>hdf5</code> files present in the HamLib website.</p>
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>build-index<span class="w"> </span>out/index.csv
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>build-index<span class="w"> </span>out/index.db
 </code></pre>
 </div></li>
 
 <li><p>Download the Hamiltonian ZIP files.</p>
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.csv<span class="w"> </span>out/ham
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.db<span class="w"> </span>out/ham
 <span class="c1"># it is also possible to apply a filter to only download files in a given subdirectory</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.csv<span class="w"> </span>out/ham<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
 </code></pre>
 </div></li>
 
 <li><p>Run the benchmark.</p>
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.csv<span class="w"> </span>out/ham<span class="w"> </span>out/results
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/results
 <span class="c1"># or</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.csv<span class="w"> </span>out/ham<span class="w"> </span>out/results<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/results<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">32</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
 </code></pre>
 </div></li>
+
+<li><p>You can obtain temporary consolidated results during the benchmark by running:</p>
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/results
+</code></pre>
+</div>
+
+<p>This is automatically done at the end of the benchmark.</p></li>
 </ol>
+
+<h2 id="more-help">More help</h2>
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>--help
+</code></pre>
+</div>
 
 <h1 id="changelog">Changelog</h1>
 </div>
