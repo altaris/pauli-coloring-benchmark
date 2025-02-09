@@ -92,7 +92,12 @@ def benchmark(
         n_jobs=n_jobs,
         methods=methods.split(","),
     )
-    df.to_csv(output_dir / "results.csv", index=False)
+
+    results_db = output_dir / "results.db"
+    logging.info("Writing results to: {}", results_db)
+    db = sqlite3.connect(results_db)
+    df.to_sql("results", db, if_exists="replace", index=True)
+    db.close()
 
     logging.info("Done in: {}", datetime.now() - start)
 
