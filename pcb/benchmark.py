@@ -45,16 +45,18 @@ def _bench_one(
     operator are shuffled before the comparison.
 
     The output JSON file contains the following keys
-    - `trotterization`: as passed,
-    - `method`: as passed,
+    - `trotterization`: as passed.
+    - `method`: as passed.
     - `n_terms`: number of terms in the underlying Pauli operator (this is of
-      course the same before and after reordering),
-    - `depth`: the depth of the circuit obtained by Trotterization,
-    - `order`: order of the Trotterization, ignored if `trotterization` is
-      `lie_trotter`,
-    - `n_timesteps`: called `reps` in Qiskit,
-    - `reordering_time`: in milliseconds,
+      course the same before and after reordering).
+    - `depth`: the depth of the circuit obtained by Trotterization.
+    - `order`: order of the Trotterization. Not present if `trotterization` is
+      `lie_trotter`.
+    - `n_timesteps`: called `reps` in Qiskit.
+    - `reordering_time`: in milliseconds.
     - `synthesis_time`: in milliseconds.
+    - `hid`: Hamiltonian id, which is the concatenation of the directory, file
+      name, and key in the HDF5 file. Example: `binaryoptimization/maxcut/random/ham-graph-complete_bipart/complbipart-n-100_a-50_b-50`.
 
     If `method` is not `none`, the output HDF5 file contains a dataset named
     `coloring` containing the coloring vector. This file is created in the same
@@ -85,6 +87,9 @@ def _bench_one(
                 "n_timesteps": n_timesteps,
                 "order": order,
                 "trotterization": trotterization,
+                "hid": (
+                    ham_file.name.split(".")[0].replace("__", "/") + "/" + key
+                ),
             }
 
             reordering_time = 0.0
@@ -114,8 +119,7 @@ def _bench_one(
 
             with result_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
-            if method != "none":
-                # coloring_array is defined
+            if method != "none":  # coloring_array is defined
                 with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
                     fp.create_dataset("coloring", data=coloring_array)
 
@@ -213,8 +217,13 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
         jobs_dir.glob("**/*.json"), desc="Consolidating", leave=False
     )
     for file in progress:
-        with open(file, "r", encoding="utf-8") as fp:
-            rows.append(json.load(fp))
+        try:
+            with open(file, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
+                data["jid"] = file.stem
+                rows.append(data)
+        except json.JSONDecodeError as e:
+            logging.error("Error reading {}: {}", file, e)
     results = pd.DataFrame(rows)
     results.set_index("hid", inplace=True)
     logging.info("Consolidated {} job results", len(results))
