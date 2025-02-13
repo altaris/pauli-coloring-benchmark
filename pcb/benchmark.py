@@ -111,13 +111,11 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update(
-                {
-                    "depth": circuit.depth(),
-                    "reordering_time": reordering_time,
-                    "synthesis_time": synthesis_time,
-                }
-            )
+            result.update({
+                "depth": circuit.depth(),
+                "reordering_time": reordering_time,
+                "synthesis_time": synthesis_time,
+            })
 
             with result_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
@@ -176,12 +174,9 @@ def benchmark(
             (row["dir"] + row["file"]).replace("/", "__") + ".hdf5.zip"
         )
         everything = product(
-            [
-                # "lie_trotter",
-                "suzuki_trotter",
-            ],
+            ["suzuki_trotter"],
             methods,
-            [2, 4],  # order
+            [4],  # order
             [1],  # n_timesteps
             range(n_trials),
         )
