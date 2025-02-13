@@ -13,12 +13,12 @@
         "qiskit>=1.3.1",
         "requests>=2.32.3",
         "tqdm>=4.67.1",
-]
+    ]
     description = ""
     license = { file = "LICENSE" }
     name = "pcb"
     readme = "README.md"
-    requires-python = ">=3.12"
+    requires-python = ">=3.12,<3.13"
     version = "0.0.0"
     [project.urls]
         "Bug Tracker" = "https://github.com/altaris/pcb/issues"
@@ -27,13 +27,13 @@
         Homepage      = "https://github.com/altaris/pcb"
         Repository    = "https://github.com/altaris/pcb.git"
     [project.optional-dependencies]
-jupyter = [
+        jupyter = [
             "ipywidgets>=8.1.5",
             "jupyter-black>=0.4.0",
             "matplotlib>=3.10.0",
             "pylatexenc>=2.10",
             "seaborn>=0.13.2",
-]
+        ]
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file-format
 [tool.mypy]
     check_untyped_defs     = true
@@ -98,7 +98,7 @@ jupyter = [
         ]
 [tool.uv]
     dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "pdoc>=15.0.1",
-    "types-requests>=2.32.0.20241016",
-]
+        "ipykernel>=6.29.5",
+        "pdoc>=15.0.1",
+        "types-requests>=2.32.0.20241016",
+    ]
