@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
+from qiskit import qpy
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
@@ -120,6 +121,8 @@ def _bench_one(
 
             with result_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
+            with result_file.with_suffix(".qpy").open("wb") as fp:
+                qpy.dump(circuit, fp)
             if method != "none":  # coloring_array is defined
                 with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
                     fp.create_dataset("coloring", data=coloring_array)
