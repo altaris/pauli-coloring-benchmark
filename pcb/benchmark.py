@@ -111,11 +111,13 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update({
-                "depth": circuit.depth(),
-                "reordering_time": reordering_time,
-                "synthesis_time": synthesis_time,
-            })
+            result.update(
+                {
+                    "depth": circuit.depth(),
+                    "reordering_time": reordering_time,
+                    "synthesis_time": synthesis_time,
+                }
+            )
 
             with result_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
@@ -130,10 +132,6 @@ def _bench_one(
 
     except filelock.Timeout:
         pass
-
-    else:
-        lock.release()
-        lock_file.unlink(missing_ok=True)
 
 
 def benchmark(
