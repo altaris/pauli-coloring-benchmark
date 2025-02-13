@@ -188,3 +188,6 @@ test.py
 
 # Output dir
 out/
+
+# Super duper secret stuff
+secret/
