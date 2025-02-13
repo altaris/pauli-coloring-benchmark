@@ -56,6 +56,20 @@ def main(logging_level: str) -> None:
         "'degree,saturation,none'"
     ),
 )
+@click.option("--min-qubits", type=int, default=0, help="Defaults to 0")
+@click.option(
+    "--max-qubits",
+    type=int,
+    default=256,
+    help="Defaults to 256. Set to 0 to disable",
+)
+@click.option("--min-terms", type=int, default=0, help="Defaults to 0")
+@click.option(
+    "--max-terms",
+    type=int,
+    default=10000,
+    help="Defaults to 10000. Set to 0 to disable",
+)
 def benchmark(
     index_db: Path,
     ham_dir: Path,
@@ -64,6 +78,10 @@ def benchmark(
     n_trials: int,
     n_jobs: int,
     methods: str,
+    min_qubits: int,
+    max_qubits: int,
+    min_terms: int,
+    max_terms: int,
 ) -> None:
     """Runs a benchmark on some or all Hamiltonian files in the index"""
     import sqlite3
@@ -76,11 +94,23 @@ def benchmark(
     start = datetime.now()
 
     logging.info("Reading index {}", index_db)
-    db = sqlite3.connect(index_db)
+
+    query, clauses = "SELECT * FROM `index`", []
     if prefix:
-        query = f"SELECT * FROM `index` WHERE `dir` LIKE '{prefix}%'"
-    else:
-        query = "SELECT * FROM `index`"
+        clauses.append(f"`dir` LIKE '{prefix}%'")
+    if min_qubits > 0:
+        clauses.append(f"`n_qubits` >= {min_qubits}")
+    if max_qubits > 0:
+        clauses.append(f"`n_qubits` <= {max_qubits}")
+    if min_terms > 0:
+        clauses.append(f"`n_terms` >= {min_terms}")
+    if max_terms > 0:
+        clauses.append(f"`n_terms` <= {max_terms}")
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    logging.debug("Query: {}", query)
+
+    db = sqlite3.connect(index_db)
     index = pd.read_sql(query, db)
     db.close()
 

@@ -22,7 +22,6 @@ from .reordering import reorder
 from .reordering.utils import coloring_to_array
 from .utils import hash_dict
 
-MIN_N_TERMS = 10  # Hamiltonians with fewer terms are not benchmarked
 ONE_MS = timedelta(milliseconds=1)
 
 
@@ -157,12 +156,6 @@ def benchmark(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logging.debug("Number of Hamiltonians: {}", len(index))
-    index = index[index["n_terms"] >= MIN_N_TERMS]
-    logging.debug(
-        "Number of Hamiltonians after n_terms cutoff: {} (MIN_N_TERMS={})",
-        len(index),
-        MIN_N_TERMS,
-    )
     index = index.sort_values("n_terms")
 
     jobs = []
