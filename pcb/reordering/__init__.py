@@ -31,7 +31,7 @@ def reorder(
         "saturation",
         "simplicial",
     ],
-) -> tuple[PauliEvolutionGate, Coloring]:
+) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
     """
     Applies Pauli coloring to reorder the Pauli terms in the underlying operator
     of the gate.
@@ -49,7 +49,10 @@ def reorder(
     """
     methods: dict[
         str,
-        Callable[[PauliEvolutionGate], tuple[PauliEvolutionGate, Coloring]],
+        Callable[
+            [PauliEvolutionGate],
+            tuple[PauliEvolutionGate, Coloring, list[int]],
+        ],
     ] = {
         "degree_c": degree_reordering_c,
         "degree": degree_reordering,
@@ -57,5 +60,4 @@ def reorder(
         "saturation": saturation_reordering,
         "simplicial": simplicial_reordering,
     }
-    gate, coloring = methods[method](gate)
-    return gate, coloring
+    return methods[method](gate)

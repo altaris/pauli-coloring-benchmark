@@ -199,10 +199,13 @@ def misra_gries(g: nx.Graph) -> nx.Graph:
 
 def misra_gries_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring]:
+) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
     """
     Reordering method for Ising Hamiltonians based on the Misra-Gries edge
     coloring algorithm.
+
+    Returns:
+        See `pcb.reordering.utils.reorder_gate_by_colors`.
     """
 
     def _edge_or_self_loop(e: list[int]) -> tuple[int, int]:

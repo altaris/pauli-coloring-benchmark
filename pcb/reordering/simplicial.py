@@ -16,7 +16,7 @@ from pcb.reordering.utils import (
 
 def simplicial_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring]:
+) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
     """
     Reordering method for 3SAT Hamiltonians that works in two steps:
     1. detect cliques of ternary terms, build and color the corresponding
@@ -24,6 +24,9 @@ def simplicial_reordering(
     2. detect and color the binary terms, taking into account the colors of the
        ternary terms;
     3. color all unary terms with a fresh color.
+
+    Returns:
+        See `pcb.reordering.utils.reorder_gate_by_colors`.
     """
     # if not is_3sat(gate):
     #     raise ValueError(

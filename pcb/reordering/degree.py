@@ -46,11 +46,15 @@ def degree_coloring(
 
 def degree_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring]:
+) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
     """
     Algorithm 1.2.2.2 of
 
-        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of Graphs.” (2008).
+        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of
+        Graphs.” (2008).
+
+    Returns:
+        See `pcb.reordering.utils.reorder_gate_by_colors`.
     """
     assert isinstance(gate.operator, SparsePauliOp)
     groups = term_groups(gate.operator)

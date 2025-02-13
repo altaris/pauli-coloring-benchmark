@@ -16,11 +16,10 @@ from .utils import (
 
 def degree_reordering_c(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring]:
+) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
     """
-    Algorithm 1.2.2.2 of
-
-        Kosowski, Adrian and Krzysztof Manuszewski. “Classical Coloring of Graphs.” (2008).
+    C implementation of the degree method of
+    `pcb.reordering.degree.degree_reordering`.
     """
     import ctypes
 

@@ -1,13 +1,14 @@
 """Actual benchmark functions"""
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import product
 from pathlib import Path
 from typing import Any, Literal
 
 import filelock
 import h5py
+import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
@@ -21,6 +22,7 @@ from .reordering.utils import coloring_to_array
 from .utils import hash_dict
 
 MIN_N_TERMS = 10  # Hamiltonians with fewer terms are not benchmarked
+ONE_MS = timedelta(milliseconds=1)
 
 
 def _bench_one(
@@ -49,8 +51,9 @@ def _bench_one(
     - `method`: as passed.
     - `n_terms`: number of terms in the underlying Pauli operator (this is of
       course the same before and after reordering).
+    - `n_qubits`: number of qubits in the gate.
     - `depth`: the depth of the circuit obtained by Trotterization.
-    - `order`: order of the Trotterization. Not present if `trotterization` is
+    - `order`: order of the Trotterization. Not relevant if `trotterization` is
       `lie_trotter`.
     - `n_timesteps`: called `reps` in Qiskit.
     - `reordering_time`: in milliseconds.
@@ -59,11 +62,10 @@ def _bench_one(
       name, and key in the HDF5 file. Example: `binaryoptimization/maxcut/random/ham-graph-complete_bipart/complbipart-n-100_a-50_b-50`.
 
     If `method` is not `none`, the output HDF5 file contains a dataset named
-    `coloring` containing the coloring vector. This file is created in the same
-    directory as the JSON file, and has the same name but with a `.hdf5`
+    `coloring` containing the coloring vector and the index vector under the
+    keys `coloring` and `term_indices` respectively. This file is created in the
+    same directory as the JSON file, and has the same name but with a `.hdf5`
     extension.
-
-    All Trotterizations are done with `reps=1`.
     """
 
     ham_file = Path(ham_file)
@@ -71,19 +73,18 @@ def _bench_one(
     if result_file.is_file():
         return
     result_file.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = result_file.with_suffix(".lock")
+    lock = filelock.FileLock(lock_file, blocking=False)
 
     try:
-        lock = filelock.FileLock(
-            result_file.with_suffix(".lock"), blocking=False
-        )
         with lock:
             with open_hamiltonian_file(ham_file) as fp:
-                shuffle = method != "none"
-                gate = to_evolution_gate(fp[key][()], shuffle=shuffle)
+                gate = to_evolution_gate(fp[key][()], shuffle=False)
 
             result: dict[str, Any] = {
                 "method": method,
                 "n_terms": len(gate.operator),
+                "n_qubits": gate.num_qubits,
                 "n_timesteps": n_timesteps,
                 "order": order,
                 "trotterization": trotterization,
@@ -95,8 +96,8 @@ def _bench_one(
             reordering_time = 0.0
             if method != "none":
                 start = datetime.now()
-                gate, coloring = reorder(gate, method)
-                reordering_time = (datetime.now() - start).microseconds / 1000
+                gate, coloring, term_indices = reorder(gate, method)
+                reordering_time = (datetime.now() - start) / ONE_MS
                 coloring_array = coloring_to_array(coloring)
 
             start = datetime.now()
@@ -107,7 +108,7 @@ def _bench_one(
                     reps=n_timesteps, order=order, preserve_order=True
                 )
             circuit = synthesizer.synthesize(gate)
-            synthesis_time = (datetime.now() - start).microseconds / 1000
+            synthesis_time = (datetime.now() - start) / ONE_MS
 
             result.update(
                 {
@@ -122,9 +123,16 @@ def _bench_one(
             if method != "none":  # coloring_array is defined
                 with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
                     fp.create_dataset("coloring", data=coloring_array)
+                    fp.create_dataset(
+                        "term_indices", data=np.array(term_indices, dtype=int)
+                    )
 
     except filelock.Timeout:
         pass
+
+    else:
+        lock.release()
+        lock_file.unlink(missing_ok=True)
 
 
 def benchmark(
