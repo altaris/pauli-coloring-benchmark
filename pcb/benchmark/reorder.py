@@ -1,4 +1,4 @@
-"""Actual benchmark functions"""
+"""Hamiltonian reordering benchmarking"""
 
 import json
 from datetime import datetime, timedelta
@@ -16,11 +16,11 @@ from qiskit import qpy
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
-from .hamlib import open_hamiltonian_file
-from .qiskit import to_evolution_gate
-from .reordering import reorder
-from .reordering.utils import coloring_to_array
-from .utils import hash_dict
+from ..hamlib import open_hamiltonian_file
+from ..qiskit import to_evolution_gate
+from ..reordering import reorder
+from ..reordering.utils import coloring_to_array
+from ..utils import hash_dict
 
 ONE_MS = timedelta(milliseconds=1)
 

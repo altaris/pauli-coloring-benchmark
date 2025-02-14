@@ -44,9 +44,9 @@
 6. Run the benchmark.
 
    ```sh
-   uv run python -m pcb benchmark out/index.db out/ham out/results
+   uv run python -m pcb benchmark-reorder out/index.db out/ham out/results
    # or
-   uv run python -m pcb benchmark out/index.db out/ham out/results --n-jobs 32 --methods none,saturation --prefix discreteoptimization/tsp
+   uv run python -m pcb benchmark-reorder out/index.db out/ham out/results --n-jobs 32 --methods none,saturation --prefix discreteoptimization/tsp
    ```
 
 7. You can obtain temporary consolidated results during the benchmark by running:

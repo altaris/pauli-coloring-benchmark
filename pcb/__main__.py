@@ -3,14 +3,45 @@
 # pylint: disable=import-outside-toplevel
 
 import os
+import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import click
+import pandas as pd
 from loguru import logger as logging
 
 from .logging import setup_logging
 
 HAMLIB_URL = "https://portal.nersc.gov/cfs/m888/dcamps/hamlib/"
+
+
+def _open_index(
+    index_db: Path,
+    prefix: str,
+    min_qubits: int | None = None,
+    max_qubits: int | None = None,
+    min_terms: int | None = None,
+    max_terms: int | None = None,
+) -> pd.DataFrame:
+    query, clauses = "SELECT * FROM `index`", []
+    if prefix:
+        clauses.append(f"`dir` LIKE '{prefix}%'")
+    if min_qubits is not None and min_qubits > 0:
+        clauses.append(f"`n_qubits` >= {min_qubits}")
+    if max_qubits is not None and max_qubits > 0:
+        clauses.append(f"`n_qubits` <= {max_qubits}")
+    if min_terms is not None and min_terms > 0:
+        clauses.append(f"`n_terms` >= {min_terms}")
+    if max_terms is not None and max_terms > 0:
+        clauses.append(f"`n_terms` <= {max_terms}")
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    logging.debug("Query: {}", query)
+    db = sqlite3.connect(index_db)
+    df = pd.read_sql(query, db)
+    db.close()
+    return df
 
 
 @click.group()
@@ -70,7 +101,7 @@ def main(logging_level: str) -> None:
     default=10000,
     help="Defaults to 10000. Set to 0 to disable",
 )
-def benchmark(
+def benchmark_reorder(
     index_db: Path,
     ham_dir: Path,
     output_dir: Path,
@@ -84,36 +115,22 @@ def benchmark(
     max_terms: int,
 ) -> None:
     """Runs a benchmark on some or all Hamiltonian files in the index"""
-    import sqlite3
-    from datetime import datetime
 
-    import pandas as pd
-
-    from .benchmark import benchmark as _benchmark
+    from .benchmark.reorder import benchmark as _benchmark
 
     start = datetime.now()
 
     logging.info("Reading index {}", index_db)
+    index = _open_index(
+        index_db=index_db,
+        prefix=prefix,
+        min_qubits=min_qubits,
+        max_qubits=max_qubits,
+        min_terms=min_terms,
+        max_terms=max_terms,
+    )
 
-    query, clauses = "SELECT * FROM `index`", []
-    if prefix:
-        clauses.append(f"`dir` LIKE '{prefix}%'")
-    if min_qubits > 0:
-        clauses.append(f"`n_qubits` >= {min_qubits}")
-    if max_qubits > 0:
-        clauses.append(f"`n_qubits` <= {max_qubits}")
-    if min_terms > 0:
-        clauses.append(f"`n_terms` >= {min_terms}")
-    if max_terms > 0:
-        clauses.append(f"`n_terms` <= {max_terms}")
-    if clauses:
-        query += " WHERE " + " AND ".join(clauses)
-    logging.debug("Query: {}", query)
-
-    db = sqlite3.connect(index_db)
-    index = pd.read_sql(query, db)
-    db.close()
-
+    logging.info("Starting benchmark")
     df = _benchmark(
         index=index,
         ham_dir=ham_dir,
@@ -145,9 +162,6 @@ def build_index(hamlib_url: str, index_db: Path) -> None:
     Builds the index of all Hamiltonian files in the HamLib website and writes
     it to a SQLite database, under table `index`.
     """
-    import sqlite3
-    from datetime import datetime
-
     from .hamlib import build_index as _build_index
 
     start = datetime.now()
@@ -171,10 +185,8 @@ def consolidate(output_dir: Path) -> None:
     Consolidates benchmark results .json files in OUTPUT_DIR/jobs into a single
     .csv file in OUTPUT_DIR/results.csv.
     """
-    import sqlite3
-    from datetime import datetime
 
-    from .benchmark import consolidate as _consolidate
+    from .benchmark.reorder import consolidate as _consolidate
 
     start = datetime.now()
 
@@ -204,23 +216,12 @@ def consolidate(output_dir: Path) -> None:
 )
 def download(index_db: Path, output_dir: Path, prefix: str) -> None:
     """Downloads some or all Hamiltonian files in the index"""
-    import sqlite3
-    from datetime import datetime
-
-    import pandas as pd
 
     from .hamlib import download as _download
 
     start = datetime.now()
 
-    db = sqlite3.connect(index_db)
-    if prefix:
-        query = f"SELECT * FROM `index` WHERE `dir` LIKE '{prefix}%'"
-    else:
-        query = "SELECT * FROM `index`"
-    index = pd.read_sql(query, db)
-    db.close()
-
+    index = _open_index(index_db, prefix)
     _download(index, output_dir, prefix)
 
     logging.info("Done in: {}", datetime.now() - start)
