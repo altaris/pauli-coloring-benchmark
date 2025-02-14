@@ -21,7 +21,7 @@ from ..qiskit import to_evolution_gate
 from ..reordering import reorder
 from ..reordering.utils import coloring_to_array
 from .consolidate import consolidate
-from .utils import hash_dict, jid_to_json_path
+from .utils import hash_dict, hid_to_file_key, jid_to_json_path
 
 ONE_MS = timedelta(milliseconds=1)
 
@@ -111,11 +111,13 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update({
-                "depth": circuit.depth(),
-                "reordering_time": reordering_time,
-                "synthesis_time": synthesis_time,
-            })
+            result.update(
+                {
+                    "depth": circuit.depth(),
+                    "reordering_time": reordering_time,
+                    "synthesis_time": synthesis_time,
+                }
+            )
 
             with output_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
@@ -160,11 +162,7 @@ def benchmark(
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
-        # ham_path, key = hid_to_file_key(row["hid"], ham_dir)
-        ham_path = ham_dir / (
-            (row["dir"] + row["file"]).replace("/", "__") + ".hdf5.zip"
-        )
-        key = row["key"]
+        ham_path, key = hid_to_file_key(row["hid"], ham_dir)
         everything = product(
             ["suzuki_trotter"],
             methods,

@@ -18,7 +18,7 @@ HAMLIB_URL = "https://portal.nersc.gov/cfs/m888/dcamps/hamlib/"
 
 def _open_index(
     index_db: Path,
-    prefix: str,
+    prefix: str = "",
     min_qubits: int | None = None,
     max_qubits: int | None = None,
     min_terms: int | None = None,
@@ -26,7 +26,7 @@ def _open_index(
 ) -> pd.DataFrame:
     query, clauses = "SELECT * FROM `index`", []
     if prefix:
-        clauses.append(f"`dir` LIKE '{prefix}%'")
+        clauses.append(f"`hid` LIKE '{prefix}%'")
     if min_qubits is not None and min_qubits > 0:
         clauses.append(f"`n_qubits` >= {min_qubits}")
     if max_qubits is not None and max_qubits > 0:

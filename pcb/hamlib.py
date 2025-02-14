@@ -89,9 +89,9 @@ def build_index(base_url: str) -> pd.DataFrame:
     This crawls the website to find all the CSV files. Each of them lists the
     Hamiltonian files in that directory. Then, this method essentially
     concatenates all of them. The returned dataframe has the following columns:
-    - `dir`: e.g. `discreteoptimization/tsp/` (note the training slash),
-    - `file`: e.g. `TSP_Ncity-8.hdf5`,
-    - `key`: e.g. `tsp_prob-a280_Ncity-8_enc-stdbinary`,
+    - `hid`: ID of the Hamiltonian, which concatenates the path, the HDF5 filename,
+      and the key within. Example:
+      `discreteoptimization/tsp/TSP_Ncity-5/tsp_prob-berlin52_Ncity-5_enc-unary`
     - `n_qubits`: e.g. `24`,
     - `n_terms`: e.g. `449`.
 
@@ -100,22 +100,23 @@ def build_index(base_url: str) -> pd.DataFrame:
     data = []
     for url in _all_csv_urls(base_url):
         df = pd.read_csv(url)
-        df = pd.DataFrame(
-            [
-                {
-                    "dir": urljoin(url, ".")[len(base_url) :],
-                    "file": r["File"][:-5],  # Remove the trailing .hdf5
-                    "key": r["Dataset"][1:],  # Remove the leading slash
-                    "n_qubits": r["nqubits"],
-                    "n_terms": r["terms"],
-                }
-                for _, r in df.iterrows()
-            ]
-        )
+        df = pd.DataFrame([
+            {
+                "hid": (
+                    urljoin(url, ".")[len(base_url) :]
+                    + r["File"][:-5]  # Remove the trailing .hdf5
+                    + "/"
+                    + r["Dataset"][1:]  # Remove the leading slash
+                ),
+                "n_qubits": r["nqubits"],
+                "n_terms": r["terms"],
+            }
+            for _, r in df.iterrows()
+        ])
         data.append(df)
     df = pd.concat(data, ignore_index=True)
     df = df.astype({"n_qubits": int, "n_terms": int})
-    df.set_index("dir", inplace=True)
+    df.set_index("hid", inplace=True)
     return df
 
 
@@ -136,29 +137,25 @@ def download(
     This function does not distribute the downloads across multiple processes to
     not slam the HamLib website with requests.
     """
-    if prefix:
-        index = index[index["dir"].str.startswith(prefix)]
-    if base_url[-1] != "/":
-        base_url += "/"
-    df = index.groupby(["dir", "file"]).first().reset_index()
-    df["url"] = base_url + df["dir"] + df["file"] + ".zip"
-    logging.info(
-        "Downloading {} Hamiltonians files to {}", len(df), output_dir
-    )
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    progress = tqdm(df.iterrows(), desc="Downloading", total=len(df))
-    for _, row in progress:
-        remote_path = row["dir"] + row["file"]
-        progress.set_postfix_str(remote_path)
-        path = output_dir / (remote_path.replace("/", "__") + ".hdf5.zip")
+    if prefix:
+        index = index[index["hid"].str.startswith(prefix)]
+    s = index["hid"].map(lambda s: "/".join(s.split("/")[:-1])).unique()
+
+    logging.info("Downloading {} Hamiltonians files to {}", len(s), output_dir)
+    progress = tqdm(s, desc="Downloading", total=len(s))
+    for p in progress:
+        progress.set_postfix_str(p)
+        url = urljoin(base_url, p + ".zip")
+        path = output_dir / (p.replace("/", "__") + ".hdf5.zip")
         if path.is_file():
-            logging.debug("Skipping: {}", row["url"])
+            logging.debug("Skipping: {}", url)
             continue
         try:
-            response = requests.get(row["url"], stream=True, timeout=60)
+            response = requests.get(url, stream=True, timeout=60)
             response.raise_for_status()
             with path.open("wb") as fp:
                 fp.write(response.content)
         except Exception as e:
-            logging.error("Failed to download {}: {}", row["url"], e)
+            logging.error("Failed to download {}: {}", url, e)
