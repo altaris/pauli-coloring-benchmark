@@ -120,7 +120,10 @@ def build_index(base_url: str) -> pd.DataFrame:
 
 
 def download(
-    index: pd.DataFrame, output_dir: str | Path, prefix: str | None = None
+    index: pd.DataFrame,
+    output_dir: str | Path,
+    base_url: str,
+    prefix: str | None = None,
 ) -> None:
     """
     Downloads all the compressed HDF5 Hamiltonian files in the given index to
@@ -135,8 +138,10 @@ def download(
     """
     if prefix:
         index = index[index["dir"].str.startswith(prefix)]
-    df = index.groupby(["base_url", "dir", "file"]).first().reset_index()
-    df["url"] = df["base_url"] + df["dir"] + df["file"] + ".zip"
+    if base_url[-1] != "/":
+        base_url += "/"
+    df = index.groupby(["dir", "file"]).first().reset_index()
+    df["url"] = base_url + df["dir"] + df["file"] + ".zip"
     logging.info(
         "Downloading {} Hamiltonians files to {}", len(df), output_dir
     )

@@ -4,7 +4,6 @@
 
 import os
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
 import click
@@ -12,6 +11,7 @@ import pandas as pd
 from loguru import logger as logging
 
 from .logging import setup_logging
+from .utils import timed
 
 HAMLIB_URL = "https://portal.nersc.gov/cfs/m888/dcamps/hamlib/"
 
@@ -101,6 +101,7 @@ def main(logging_level: str) -> None:
     default=10000,
     help="Defaults to 10000. Set to 0 to disable",
 )
+@timed
 def benchmark_reorder(
     index_db: Path,
     ham_dir: Path,
@@ -117,8 +118,6 @@ def benchmark_reorder(
     """Runs a benchmark on some or all Hamiltonian files in the index"""
 
     from .benchmark.reorder import benchmark as _benchmark
-
-    start = datetime.now()
 
     logging.info("Reading index {}", index_db)
     index = _open_index(
@@ -146,8 +145,6 @@ def benchmark_reorder(
     df.to_sql("results", db, if_exists="replace", index=True)
     db.close()
 
-    logging.info("Done in: {}", datetime.now() - start)
-
 
 @main.command()
 @click.argument("index_db", type=Path)
@@ -157,14 +154,13 @@ def benchmark_reorder(
     help="Defaults to " + HAMLIB_URL,
     type=str,
 )
+@timed
 def build_index(hamlib_url: str, index_db: Path) -> None:
     """
     Builds the index of all Hamiltonian files in the HamLib website and writes
     it to a SQLite database, under table `index`.
     """
     from .hamlib import build_index as _build_index
-
-    start = datetime.now()
 
     logging.info("Building index of Hamiltonian files in: {}", hamlib_url)
     index_db.parent.mkdir(parents=True, exist_ok=True)
@@ -175,11 +171,10 @@ def build_index(hamlib_url: str, index_db: Path) -> None:
     df.to_sql("index", db, if_exists="replace", index=True)
     db.close()
 
-    logging.info("Done in: {}", datetime.now() - start)
-
 
 @main.command()
 @click.argument("output_dir", type=Path)
+@timed
 def consolidate(output_dir: Path) -> None:
     """
     Consolidates benchmark results .json files in OUTPUT_DIR/jobs into a single
@@ -187,8 +182,6 @@ def consolidate(output_dir: Path) -> None:
     """
 
     from .benchmark.reorder import consolidate as _consolidate
-
-    start = datetime.now()
 
     logging.info("Consolidating benchmark results in: {}", output_dir)
     df = _consolidate(output_dir / "jobs")
@@ -198,8 +191,6 @@ def consolidate(output_dir: Path) -> None:
     db = sqlite3.connect(results_db)
     df.to_sql("results", db, if_exists="replace", index=True)
     db.close()
-
-    logging.info("Done in: {}", datetime.now() - start)
 
 
 @main.command()
@@ -214,17 +205,22 @@ def consolidate(output_dir: Path) -> None:
         "'binaryoptimization/maxcut'"
     ),
 )
-def download(index_db: Path, output_dir: Path, prefix: str) -> None:
+@click.option(
+    "--hamlib-url",
+    default=HAMLIB_URL,
+    help="Defaults to " + HAMLIB_URL,
+    type=str,
+)
+@timed
+def download(
+    index_db: Path, output_dir: Path, prefix: str, hamlib_url: str
+) -> None:
     """Downloads some or all Hamiltonian files in the index"""
 
     from .hamlib import download as _download
 
-    start = datetime.now()
-
     index = _open_index(index_db, prefix)
-    _download(index, output_dir, prefix)
-
-    logging.info("Done in: {}", datetime.now() - start)
+    _download(index, output_dir, hamlib_url, prefix)
 
 
 # pylint: disable=no-value-for-parameter
