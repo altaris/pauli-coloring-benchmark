@@ -45,7 +45,7 @@ def _open_index(
 
 
 @click.group()
-@click.option(
+@click.option(  # --logging-level
     "--logging-level",
     default=os.getenv("LOGGING_LEVEL", "info"),
     help=(
@@ -67,7 +67,7 @@ def main(logging_level: str) -> None:
 @click.argument("index_db", type=Path)
 @click.argument("ham_dir", type=Path)
 @click.argument("output_dir", type=Path)
-@click.option(
+@click.option(  # --prefix
     "--prefix",
     type=str,
     default="",
@@ -78,24 +78,24 @@ def main(logging_level: str) -> None:
 )
 @click.option("--n-trials", type=int, default=5, help="Defaults to 5")
 @click.option("--n-jobs", type=int, default=32, help="Defaults to 32")
-@click.option(
+@click.option(  # --methods
     "--methods",
     type=str,
-    default="degree,saturation",
+    default="none,saturation",
     help=(
         "Comma-separated list of reordering methods to benchmark. Defaults to "
-        "'degree,saturation,none'"
+        "'none,saturation'"
     ),
 )
 @click.option("--min-qubits", type=int, default=0, help="Defaults to 0")
-@click.option(
+@click.option(  # --max-qubits
     "--max-qubits",
     type=int,
     default=256,
     help="Defaults to 256. Set to 0 to disable",
 )
 @click.option("--min-terms", type=int, default=0, help="Defaults to 0")
-@click.option(
+@click.option(  # --max-terms
     "--max-terms",
     type=int,
     default=10000,
@@ -147,8 +147,149 @@ def benchmark_reorder(
 
 
 @main.command()
+@click.argument("ham_dir", type=Path)
+@click.argument("reorder_result_dir", type=Path)
+@click.argument("output_dir", type=Path)
+@click.option(  # --prefix
+    "--prefix",
+    type=str,
+    default="",
+    help=(
+        "Filter the Hamiltonians to benchmark by prefix. Example: "
+        "'binaryoptimization/maxcut'"
+    ),
+)
+@click.option("--n-trials", type=int, default=1, help="Defaults to 1")
+@click.option("--n-jobs", type=int, default=8, help="Defaults to 8")
+@click.option(  # --methods
+    "--methods",
+    type=str,
+    default="none,saturation",
+    help=(
+        "Comma-separated list of reordering methods to benchmark. Defaults to "
+        "'none,saturation'"
+    ),
+)
+@click.option("--min-qubits", type=int, default=0, help="Defaults to 0")
+@click.option(  # --max-qubits
+    "--max-qubits",
+    type=int,
+    default=256,
+    help="Defaults to 256. Set to 0 to disable",
+)
+@click.option("--min-terms", type=int, default=0, help="Defaults to 0")
+@click.option(  # --max-terms
+    "--max-terms",
+    type=int,
+    default=10000,
+    help="Defaults to 10000. Set to 0 to disable",
+)
+@click.option(  # --qaoa-provider
+    "--qaoa-provider",
+    type=str,
+    default="fez",
+    help="Fake provider to use for QAOA simulation. Defaults to 'fez'",
+)
+@click.option(  # --qaoa-n-shots
+    "--qaoa-n-shots",
+    type=int,
+    default=512,
+    help="Number of shots when estimating Hamiltonian energy. Defaults to 512",
+)
+@click.option(  # --qaoa-n-steps
+    "--qaoa-n-steps",
+    type=int,
+    default=2,
+    help=(
+        "Number of QAOA stems. Incurs 2*n_steps classical variables to "
+        "optimize. Defaults to 2"
+    ),
+)
+@click.option(  # --qaoa-max-iter
+    "--qaoa-max-iter",
+    type=str,
+    default=128,
+    help="Max. number of iteration of the classical optimizer. Defaults to 128",
+)
+@timed
+def benchmark_simulate(
+    ham_dir: Path,
+    reorder_result_dir: Path,
+    output_dir: Path,
+    prefix: str,
+    n_trials: int,
+    n_jobs: int,
+    methods: str,
+    min_qubits: int,
+    max_qubits: int,
+    min_terms: int,
+    max_terms: int,
+    qaoa_provider: str,
+    qaoa_n_shots: int,
+    qaoa_n_steps: int,
+    qaoa_max_iter: int,
+) -> None:
+    """Runs a benchmark on some or all Hamiltonian files in the index"""
+
+    from .benchmark.simulate import benchmark as _benchmark
+
+    p = reorder_result_dir / "results.db"
+    logging.info("Reading reordering benchmark results {}", p)
+    clauses = [
+        f"`hid` LIKE '{prefix}%'",
+        (
+            "( "
+            + " OR ".join([f"`method` = '{m}'" for m in methods.split(",")])
+            + " )"
+        ),
+        f"`n_qubits` >= {min_qubits}",
+        f"`n_qubits` <= {max_qubits}",
+        f"`n_terms` >= {min_terms}",
+        f"`n_terms` <= {max_terms}",
+    ]
+    query = "SELECT * FROM `results` WHERE " + " AND ".join(clauses)
+    logging.debug("Query: {}", query)
+    db = sqlite3.connect(p)
+    rrdf = pd.read_sql(query, db)
+    db.close()
+
+    # Regroup reordering results by parameter and take the shallowest one
+    rrdf = (
+        rrdf.sort_values("depth")
+        .groupby(["hid", "trotterization", "n_timesteps", "order", "method"])
+        .first()
+        .reset_index()
+    )
+    logging.info("Number of Hamiltonians: {}", len(rrdf))
+
+    logging.info("Starting benchmark")
+    qaoa_config = {
+        "max_iter": qaoa_max_iter,
+        "n_shots": qaoa_n_shots,
+        "n_steps": qaoa_n_steps,
+        "provider": qaoa_provider,
+        "seed": 0,
+    }
+    df = _benchmark(
+        ham_dir=ham_dir,
+        reorder_result=rrdf,
+        reorder_result_dir=reorder_result_dir,
+        output_dir=output_dir,
+        n_trials=n_trials,
+        n_jobs=n_jobs,
+        qaoa_config=qaoa_config,
+    )
+
+    p = output_dir / "results.db"
+    logging.info("Writing results to: {}", p)
+    db = sqlite3.connect(p)
+    df.to_sql("results", db, if_exists="replace", index=True)
+    db.close()
+
+
+@main.command()
 @click.argument("index_db", type=Path)
-@click.option(
+@click.option(  # --hamlib-url"
     "--hamlib-url",
     default=HAMLIB_URL,
     help="Defaults to " + HAMLIB_URL,
@@ -181,7 +322,7 @@ def consolidate(output_dir: Path) -> None:
     .csv file in OUTPUT_DIR/results.csv.
     """
 
-    from .benchmark.reorder import consolidate as _consolidate
+    from .benchmark.consolidate import consolidate as _consolidate
 
     logging.info("Consolidating benchmark results in: {}", output_dir)
     df = _consolidate(output_dir / "jobs")
@@ -196,7 +337,7 @@ def consolidate(output_dir: Path) -> None:
 @main.command()
 @click.argument("index_db", type=Path)
 @click.argument("output_dir", type=Path)
-@click.option(
+@click.option(  # --prefix
     "--prefix",
     type=str,
     default="",
@@ -205,7 +346,7 @@ def consolidate(output_dir: Path) -> None:
         "'binaryoptimization/maxcut'"
     ),
 )
-@click.option(
+@click.option(  # --hamlib-url
     "--hamlib-url",
     default=HAMLIB_URL,
     help="Defaults to " + HAMLIB_URL,

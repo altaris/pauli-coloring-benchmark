@@ -7,6 +7,8 @@
 
 ## How to do the thing?
 
+### Prep. work
+
 1. Install [`uv`](https://docs.astral.sh/uv/).
 
    ```sh
@@ -38,21 +40,45 @@
    ```sh
    uv run python -m pcb download out/index.db out/ham
    # it is also possible to apply a filter to only download files in a given subdirectory
-   uv run python -m pcb download out/index.db out/ham --prefix discreteoptimization/tsp
+   uv run python -m pcb download out/index.db out/ham --prefix binaryoptimization/maxcut
    ```
 
-6. Run the benchmark.
+### Reordering benchmark
+
+1. Run the benchmark.
 
    ```sh
-   uv run python -m pcb benchmark-reorder out/index.db out/ham out/results
+   uv run python -m pcb benchmark-reorder out/index.db out/ham out/reordering
    # or
-   uv run python -m pcb benchmark-reorder out/index.db out/ham out/results --n-jobs 32 --methods none,saturation --prefix discreteoptimization/tsp
+   uv run python -m pcb benchmark-reorder out/index.db out/ham out/reordering --n-jobs 32 --methods none,saturation,misra_gries --prefix binaryoptimization/maxcut
    ```
 
-7. You can obtain temporary consolidated results during the benchmark by running:
+2. You can obtain temporary consolidated results during the benchmark by running:
 
    ```sh
-   uv run python -m pcb consolidate out/results
+   uv run python -m pcb consolidate out/reordering
+   ```
+
+   This is automatically done at the end of the benchmark.
+
+### Simulation benchmark
+
+Once the reordering benchmark is done, you can run the QAOA simulation benchmark
+to see if reordered circuits produce better ground states (approximations).
+
+1. Run the benchmark.
+
+   ```sh
+   uv run python -m pcb benchmark-simulate out/ham out/reordering out/simulation
+   # or
+   uv run python -m pcb benchmark-simulate out/ham out/reordering out/simulation --n-jobs 8 --methods none,saturation,misra_gries --prefix binaryoptimization/maxcut --max-qubits 8 --max-terms 32 --qaoa-n-shots 1024 --qaoa-n-steps 2 --qaoa-max-iter 128
+   ```
+
+2. Like for the reordering benchmark, you can obtain temporary consolidated
+   results during the benchmark by running:
+
+   ```sh
+   uv run python -m pcb consolidate out/simulation
    ```
 
    This is automatically done at the end of the benchmark.

@@ -20,14 +20,15 @@ from ..hamlib import open_hamiltonian_file
 from ..qiskit import to_evolution_gate
 from ..reordering import reorder
 from ..reordering.utils import coloring_to_array
-from ..utils import hash_dict
+from .consolidate import consolidate
+from .utils import hash_dict, jid_to_json_path
 
 ONE_MS = timedelta(milliseconds=1)
 
 
 def _bench_one(
     ham_file: str | Path,
-    result_file: str | Path,
+    output_file: str | Path,
     key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
     method: Literal[
@@ -69,11 +70,11 @@ def _bench_one(
     """
 
     ham_file = Path(ham_file)
-    result_file = Path(result_file)
-    if result_file.is_file():
+    output_file = Path(output_file)
+    if output_file.is_file():
         return
-    result_file.parent.mkdir(parents=True, exist_ok=True)
-    lock_file = result_file.with_suffix(".lock")
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = output_file.with_suffix(".lock")
     lock = filelock.FileLock(lock_file, blocking=False)
 
     try:
@@ -110,20 +111,18 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update(
-                {
-                    "depth": circuit.depth(),
-                    "reordering_time": reordering_time,
-                    "synthesis_time": synthesis_time,
-                }
-            )
+            result.update({
+                "depth": circuit.depth(),
+                "reordering_time": reordering_time,
+                "synthesis_time": synthesis_time,
+            })
 
-            with result_file.open("w", encoding="utf-8") as fp:
+            with output_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
-            with result_file.with_suffix(".qpy").open("wb") as fp:
+            with output_file.with_suffix(".qpy").open("wb") as fp:
                 qpy.dump(circuit, fp)
             if method != "none":  # coloring_array is defined
-                with h5py.File(result_file.with_suffix(".hdf5"), "w") as fp:
+                with h5py.File(output_file.with_suffix(".hdf5"), "w") as fp:
                     fp.create_dataset("coloring", data=coloring_array)
                     fp.create_dataset(
                         "term_indices", data=np.array(term_indices, dtype=int)
@@ -161,9 +160,11 @@ def benchmark(
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
+        # ham_path, key = hid_to_file_key(row["hid"], ham_dir)
         ham_path = ham_dir / (
             (row["dir"] + row["file"]).replace("/", "__") + ".hdf5.zip"
         )
+        key = row["key"]
         everything = product(
             ["suzuki_trotter"],
             methods,
@@ -174,23 +175,17 @@ def benchmark(
         for trotterization, method, order, n_timesteps, i in everything:
             kw = {
                 "ham_file": ham_path,
-                "key": row["key"],
+                "key": key,
                 "trotterization": trotterization,
                 "method": method,
                 "order": order,
                 "n_timesteps": n_timesteps,
             }
             jid = hash_dict({"kw": kw, "trial": i})  # unique job identifier
-            result_file = (
-                output_dir
-                / "jobs"
-                / jid[:2]  # spread files in subdirs
-                / jid[2:4]
-                / f"{jid}.json"
-            )
-            if result_file.is_file():
+            output_file = jid_to_json_path(jid, output_dir)
+            if output_file.is_file():
                 continue
-            kw["result_file"] = result_file
+            kw["output_file"] = output_file
             jobs.append(delayed(_bench_one)(**kw))
     logging.info("Submitting {} jobs", len(jobs))
     executor = Parallel(
@@ -202,26 +197,3 @@ def benchmark(
     )
     executor(jobs)
     return consolidate(output_dir / "jobs")
-
-
-def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
-    """
-    Gather all the output JSON files produced by `_bench_one` into a single
-    dataframe
-    """
-    jobs_dir, rows = Path(jobs_dir), []
-    progress = tqdm(
-        jobs_dir.glob("**/*.json"), desc="Consolidating", leave=False
-    )
-    for file in progress:
-        try:
-            with open(file, "r", encoding="utf-8") as fp:
-                data = json.load(fp)
-                data["jid"] = file.stem
-                rows.append(data)
-        except json.JSONDecodeError as e:
-            logging.error("Error reading {}: {}", file, e)
-    results = pd.DataFrame(rows)
-    results.set_index("hid", inplace=True)
-    logging.info("Consolidated {} job results", len(results))
-    return results
