@@ -87,6 +87,8 @@ pcb    </h1>
 
 <h2 id="how-to-do-the-thing">How to do the thing?</h2>
 
+<h3 id="prep-work">Prep. work</h3>
+
 <ol>
 <li><p>Install <a href="https://docs.astral.sh/uv/"><code>uv</code></a>.</p>
 
@@ -123,23 +125,53 @@ all the <code>hdf5</code> files present in the HamLib website.</p>
 <div class="pdoc-code codehilite">
 <pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.db<span class="w"> </span>out/ham
 <span class="c1"># it is also possible to apply a filter to only download files in a given subdirectory</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>download<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut
 </code></pre>
 </div></li>
+</ol>
 
+<h3 id="reordering-benchmark">Reordering benchmark</h3>
+
+<ol>
 <li><p>Run the benchmark.</p>
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/results
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-reorder<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/reordering
 <span class="c1"># or</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/results<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">32</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation<span class="w"> </span>--prefix<span class="w"> </span>discreteoptimization/tsp
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-reorder<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">32</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation,misra_gries<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut
 </code></pre>
 </div></li>
 
 <li><p>You can obtain temporary consolidated results during the benchmark by running:</p>
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/results
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/reordering
+</code></pre>
+</div>
+
+<p>This is automatically done at the end of the benchmark.</p></li>
+</ol>
+
+<h3 id="simulation-benchmark">Simulation benchmark</h3>
+
+<p>Once the reordering benchmark is done, you can run the QAOA simulation benchmark
+to see if reordered circuits produce better ground states (approximations).</p>
+
+<ol>
+<li><p>Run the benchmark.</p>
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-simulate<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>out/simulation
+<span class="c1"># or</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-simulate<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>out/simulation<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">8</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation,misra_gries<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut<span class="w"> </span>--max-qubits<span class="w"> </span><span class="m">8</span><span class="w"> </span>--max-terms<span class="w"> </span><span class="m">32</span><span class="w"> </span>--qaoa-n-shots<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--qaoa-n-steps<span class="w"> </span><span class="m">2</span><span class="w"> </span>--qaoa-max-iter<span class="w"> </span><span class="m">128</span>
+</code></pre>
+</div></li>
+
+<li><p>Like for the reordering benchmark, you can obtain temporary consolidated
+results during the benchmark by running:</p>
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/simulation
 </code></pre>
 </div>
 
