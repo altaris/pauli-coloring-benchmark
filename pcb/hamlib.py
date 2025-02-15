@@ -100,19 +100,21 @@ def build_index(base_url: str) -> pd.DataFrame:
     data = []
     for url in _all_csv_urls(base_url):
         df = pd.read_csv(url)
-        df = pd.DataFrame([
-            {
-                "hid": (
-                    urljoin(url, ".")[len(base_url) :]
-                    + r["File"][:-5]  # Remove the trailing .hdf5
-                    + "/"
-                    + r["Dataset"][1:]  # Remove the leading slash
-                ),
-                "n_qubits": r["nqubits"],
-                "n_terms": r["terms"],
-            }
-            for _, r in df.iterrows()
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "hid": (
+                        urljoin(url, ".")[len(base_url) :]
+                        + r["File"][:-5]  # Remove the trailing .hdf5
+                        + "/"
+                        + r["Dataset"][1:]  # Remove the leading slash
+                    ),
+                    "n_qubits": r["nqubits"],
+                    "n_terms": r["terms"],
+                }
+                for _, r in df.iterrows()
+            ]
+        )
         data.append(df)
     df = pd.concat(data, ignore_index=True)
     df = df.astype({"n_qubits": int, "n_terms": int})

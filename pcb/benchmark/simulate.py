@@ -1,18 +1,15 @@
 """QAOA benchmarking"""
 
-import gzip
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import filelock
-import h5py
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
-from qiskit import QuantumCircuit, qpy
+from qiskit import QuantumCircuit
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit.quantum_info import SparsePauliOp
 from qiskit_aer.noise import NoiseModel
@@ -26,7 +23,7 @@ from tqdm import tqdm
 from ..hamlib import open_hamiltonian_file
 from ..qiskit import to_evolution_gate
 from .consolidate import consolidate
-from .utils import hash_dict, hid_to_file_key, jid_to_json_path
+from .utils import hash_dict, hid_to_file_key, jid_to_json_path, load, save
 
 FAKE_PROVIDERS: dict[str, type[FakeBackendV2]] = {
     "algiers": fake_provider.FakeAlgiers,
@@ -128,17 +125,14 @@ def _bench_one(
                 assert isinstance(operator, SparsePauliOp)
 
             if order_file is not None:
-                with h5py.File(order_file, "r") as fp:
-                    term_indices = np.array(fp["term_indices"])
+                term_indices = load(order_file)["term_indices"].astype(int)
                 terms = operator.to_sparse_list()
                 operator = SparsePauliOp.from_sparse_list(
                     [terms[i] for i in term_indices],
                     num_qubits=gate.num_qubits,
                 )
 
-            with gzip.open(circuit_file, "rb") as fp:
-                cost_operator = qpy.load(fp)[0]
-                assert isinstance(cost_operator, QuantumCircuit)
+            cost_operator = load(circuit_file)
 
             estimator = _make_estimator(
                 provider=qaoa_config["provider"],
@@ -153,8 +147,7 @@ def _bench_one(
                 n_steps=qaoa_config["n_steps"],
                 max_iter=qaoa_config["max_iter"],
             )
-            with output_file.open("w", encoding="utf-8") as fp:
-                json.dump({"qaoa_config": qaoa_config, "results": results}, fp)
+            save({"qaoa_config": qaoa_config, "results": results}, output_file)
 
     except filelock.Timeout:
         pass

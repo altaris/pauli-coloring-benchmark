@@ -1,19 +1,14 @@
 """Hamiltonian reordering benchmarking"""
 
-import gzip
-import json
 from datetime import datetime, timedelta
 from itertools import product
 from pathlib import Path
 from typing import Any, Literal
 
 import filelock
-import h5py
-import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger as logging
-from qiskit import qpy
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
@@ -22,7 +17,7 @@ from ..qiskit import to_evolution_gate
 from ..reordering import reorder
 from ..reordering.utils import coloring_to_array
 from .consolidate import consolidate
-from .utils import hash_dict, hid_to_file_key, jid_to_json_path
+from .utils import hash_dict, hid_to_file_key, jid_to_json_path, save
 
 ONE_MS = timedelta(milliseconds=1)
 
@@ -120,16 +115,13 @@ def _bench_one(
                 }
             )
 
-            with output_file.open("w", encoding="utf-8") as fp:
-                json.dump(result, fp)
-            with gzip.open(output_file.with_suffix(".qpy.gz"), "wb") as fp:
-                qpy.dump(circuit, fp)
+            save(result, output_file)
+            save(circuit, output_file.with_suffix(".qpy"))
             if method != "none":  # coloring_array is defined
-                with h5py.File(output_file.with_suffix(".hdf5"), "w") as fp:
-                    fp.create_dataset("coloring", data=coloring_array)
-                    fp.create_dataset(
-                        "term_indices", data=np.array(term_indices, dtype=int)
-                    )
+                save(
+                    {"coloring": coloring_array, "term_indices": term_indices},
+                    output_file.with_suffix(".hdf5"),
+                )
 
     except filelock.Timeout:
         pass

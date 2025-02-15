@@ -3,14 +3,13 @@ Function to consolidate the (MANY) job result JSON files in a `output_dir/jobs`
 into a single SQLite database
 """
 
-import json
 from pathlib import Path
 
 import pandas as pd
 from loguru import logger as logging
 from tqdm import tqdm
 
-from .utils import flatten_dict
+from .utils import flatten_dict, load
 
 
 def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
@@ -28,11 +27,10 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
                 logging.warning("Removing empty file: {}", file)
                 file.unlink(missing_ok=True)
                 continue
-            with open(file, "r", encoding="utf-8") as fp:
-                data = flatten_dict(json.load(fp))
-                data["jid"] = file.stem
-                rows.append(data)
-        except json.JSONDecodeError as e:
+            data = flatten_dict(load(file))
+            data["jid"] = file.stem
+            rows.append(data)
+        except Exception as e:
             logging.error("Error reading {}: {}", file, e)
     results = pd.DataFrame(rows)
     results.set_index("hid", inplace=True)
