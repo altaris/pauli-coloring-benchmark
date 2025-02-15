@@ -2,6 +2,7 @@
 
 from typing import Callable, Literal
 
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 
 from .degree import degree_reordering
@@ -31,7 +32,7 @@ def reorder(
         "saturation",
         "simplicial",
     ],
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     Applies Pauli coloring to reorder the Pauli terms in the underlying operator
     of the gate.
@@ -51,7 +52,7 @@ def reorder(
         str,
         Callable[
             [PauliEvolutionGate],
-            tuple[PauliEvolutionGate, Coloring, list[int]],
+            tuple[PauliEvolutionGate, Coloring, np.ndarray],
         ],
     ] = {
         "degree_c": degree_reordering_c,

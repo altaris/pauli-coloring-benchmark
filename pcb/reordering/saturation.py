@@ -7,6 +7,7 @@ from collections import defaultdict
 from functools import reduce
 from typing import Generator, Iterable, TypeVar
 
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
@@ -73,7 +74,7 @@ def saturation_coloring(
 
 def saturation_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     Algorithm 1.2.2.8 of
 

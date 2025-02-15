@@ -98,20 +98,20 @@ def is_ising(gate: PauliEvolutionGate, transverse_ok: bool = False) -> bool:
 
 def reorder_gate_by_colors(
     gate: PauliEvolutionGate, color_dct: dict[int, int]
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     Given a mapping that gives a color to each term (index), produces a new
     gate whose underlying operator's terms are ordered consequently.
 
     Returns:
         1. the reordered gate;
-        2. a dict[int, list[int]] that regroup term (indices) by color;
-        3. a list of indices that gives the new order of terms.
+        2. a `dict[int, list[int]]` that regroup term (indices) by color;
+        3. a `int` array of indices that gives the new order of terms.
     """
     assert isinstance(gate.operator, SparsePauliOp)
     terms = gate.operator.to_sparse_list()
     coloring = invert_dict(color_dct)
-    index = sum(coloring.values(), start=[])
+    index = np.array(sum(coloring.values(), start=[]), dtype=int)
     operator = SparsePauliOp.from_sparse_list(
         [terms[i] for i in index], gate.num_qubits
     )

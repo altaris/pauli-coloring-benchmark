@@ -5,6 +5,7 @@ conflict graph of a Hamiltonian
 
 from pathlib import Path
 
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 
 from .utils import (
@@ -16,7 +17,7 @@ from .utils import (
 
 def degree_reordering_c(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     C implementation of the degree method of
     `pcb.reordering.degree.degree_reordering`.

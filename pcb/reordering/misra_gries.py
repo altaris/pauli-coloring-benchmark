@@ -22,6 +22,7 @@ See also:
 from typing import Callable, TypeVar
 
 import networkx as nx
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
@@ -199,7 +200,7 @@ def misra_gries(g: nx.Graph) -> nx.Graph:
 
 def misra_gries_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     Reordering method for Ising Hamiltonians based on the Misra-Gries edge
     coloring algorithm.

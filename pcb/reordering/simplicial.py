@@ -3,6 +3,7 @@
 from collections import defaultdict
 from functools import reduce
 
+import numpy as np
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
 
@@ -16,7 +17,7 @@ from pcb.reordering.utils import (
 
 def simplicial_reordering(
     gate: PauliEvolutionGate,
-) -> tuple[PauliEvolutionGate, Coloring, list[int]]:
+) -> tuple[PauliEvolutionGate, Coloring, np.ndarray]:
     """
     Reordering method for 3SAT Hamiltonians that works in two steps:
     1. detect cliques of ternary terms, build and color the corresponding
