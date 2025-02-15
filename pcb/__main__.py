@@ -38,9 +38,8 @@ def _open_index(
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
     logging.debug("Query: {}", query)
-    db = sqlite3.connect(index_db)
-    df = pd.read_sql(query, db)
-    db.close()
+    with sqlite3.connect(index_db) as db:
+        df = pd.read_sql(query, db)
     return df
 
 
@@ -141,9 +140,8 @@ def benchmark_reorder(
 
     results_db = output_dir / "results.db"
     logging.info("Writing results to: {}", results_db)
-    db = sqlite3.connect(results_db)
-    df.to_sql("results", db, if_exists="replace", index=True)
-    db.close()
+    with sqlite3.connect(results_db) as db:
+        df.to_sql("results", db, if_exists="replace", index=True)
 
 
 @main.command()
@@ -249,9 +247,8 @@ def benchmark_simulate(
     ]
     query = "SELECT * FROM `results` WHERE " + " AND ".join(clauses)
     logging.debug("Query: {}", query)
-    db = sqlite3.connect(p)
-    rrdf = pd.read_sql(query, db)
-    db.close()
+    with sqlite3.connect(p) as db:
+        rrdf = pd.read_sql(query, db)
 
     # Regroup reordering results by parameter and take the shallowest one
     rrdf = (
@@ -282,9 +279,8 @@ def benchmark_simulate(
 
     p = output_dir / "results.db"
     logging.info("Writing results to: {}", p)
-    db = sqlite3.connect(p)
-    df.to_sql("results", db, if_exists="replace", index=True)
-    db.close()
+    with sqlite3.connect(p) as db:
+        df.to_sql("results", db, if_exists="replace", index=True)
 
 
 @main.command()
@@ -308,9 +304,8 @@ def build_index(hamlib_url: str, index_db: Path) -> None:
     df = _build_index(hamlib_url)
 
     logging.info("Writing index to: {}", index_db)
-    db = sqlite3.connect(index_db)
-    df.to_sql("index", db, if_exists="replace", index=True)
-    db.close()
+    with sqlite3.connect(index_db) as db:
+        df.to_sql("index", db, if_exists="replace", index=True)
 
 
 @main.command()
@@ -329,9 +324,8 @@ def consolidate(output_dir: Path) -> None:
 
     results_db = output_dir / "results.db"
     logging.info("Writing results to: {}", results_db)
-    db = sqlite3.connect(results_db)
-    df.to_sql("results", db, if_exists="replace", index=True)
-    db.close()
+    with sqlite3.connect(results_db) as db:
+        df.to_sql("results", db, if_exists="replace", index=True)
 
 
 @main.command()
