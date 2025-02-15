@@ -1,5 +1,6 @@
 """Hamiltonian reordering benchmarking"""
 
+import gzip
 import json
 from datetime import datetime, timedelta
 from itertools import product
@@ -111,15 +112,17 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update({
-                "depth": circuit.depth(),
-                "reordering_time": reordering_time,
-                "synthesis_time": synthesis_time,
-            })
+            result.update(
+                {
+                    "depth": circuit.depth(),
+                    "reordering_time": reordering_time,
+                    "synthesis_time": synthesis_time,
+                }
+            )
 
             with output_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
-            with output_file.with_suffix(".qpy").open("wb") as fp:
+            with gzip.open(output_file.with_suffix(".qpy.gz"), "wb") as fp:
                 qpy.dump(circuit, fp)
             if method != "none":  # coloring_array is defined
                 with h5py.File(output_file.with_suffix(".hdf5"), "w") as fp:

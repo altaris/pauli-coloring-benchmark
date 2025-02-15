@@ -1,5 +1,6 @@
 """QAOA benchmarking"""
 
+import gzip
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -135,7 +136,7 @@ def _bench_one(
                     num_qubits=gate.num_qubits,
                 )
 
-            with open(circuit_file, "rb") as fp:
+            with gzip.open(circuit_file, "rb") as fp:
                 cost_operator = qpy.load(fp)[0]
                 assert isinstance(cost_operator, QuantumCircuit)
 
@@ -217,12 +218,14 @@ def _qaoa(
         mean: float,
         std: dict[str, Any],
     ) -> None:
-        steps.append({
-            "eval_count": eval_count,
-            "parameters": parameters,
-            "mean": mean,
-            "std": std,
-        })
+        steps.append(
+            {
+                "eval_count": eval_count,
+                "parameters": parameters,
+                "mean": mean,
+                "std": std,
+            }
+        )
 
     steps: list[dict] = []
     ansatz = QAOAAnsatz(cost_operator=cost_operator, reps=n_steps)
