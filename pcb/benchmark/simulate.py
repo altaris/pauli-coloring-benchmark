@@ -113,7 +113,7 @@ def _bench_one(
     ham_file, order_file = Path(ham_file), Path(order_file)
     circuit_file, output_file = Path(circuit_file), Path(output_file)
 
-    if output_file.is_file():
+    if output_file.is_file() and output_file.stat().st_size > 0:
         return
     output_file.parent.mkdir(parents=True, exist_ok=True)
     lock_file = output_file.with_suffix(".lock")
@@ -217,14 +217,12 @@ def _qaoa(
         mean: float,
         std: dict[str, Any],
     ) -> None:
-        steps.append(
-            {
-                "eval_count": eval_count,
-                "parameters": parameters,
-                "mean": mean,
-                "std": std,
-            }
-        )
+        steps.append({
+            "eval_count": eval_count,
+            "parameters": parameters,
+            "mean": mean,
+            "std": std,
+        })
 
     steps: list[dict] = []
     ansatz = QAOAAnsatz(cost_operator=cost_operator, reps=n_steps)
@@ -321,7 +319,7 @@ def benchmark(
                 }
             )
             output_file = jid_to_json_path(jid, output_dir)
-            if output_file.is_file():
+            if output_file.is_file() and output_file.stat().st_size > 0:
                 continue
             ham_file, key = hid_to_file_key(row["hid"], ham_dir)
             # ↓ files from the reording jobs are named like this

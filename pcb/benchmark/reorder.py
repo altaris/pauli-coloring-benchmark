@@ -71,7 +71,7 @@ def _bench_one(
 
     ham_file = Path(ham_file)
     output_file = Path(output_file)
-    if output_file.is_file():
+    if output_file.is_file() and output_file.stat().st_size > 0:
         return
     output_file.parent.mkdir(parents=True, exist_ok=True)
     lock_file = output_file.with_suffix(".lock")
@@ -111,13 +111,11 @@ def _bench_one(
             circuit = synthesizer.synthesize(gate)
             synthesis_time = (datetime.now() - start) / ONE_MS
 
-            result.update(
-                {
-                    "depth": circuit.depth(),
-                    "reordering_time": reordering_time,
-                    "synthesis_time": synthesis_time,
-                }
-            )
+            result.update({
+                "depth": circuit.depth(),
+                "reordering_time": reordering_time,
+                "synthesis_time": synthesis_time,
+            })
 
             with output_file.open("w", encoding="utf-8") as fp:
                 json.dump(result, fp)
@@ -181,7 +179,7 @@ def benchmark(
             }
             jid = hash_dict({"kw": kw, "trial": i})  # unique job identifier
             output_file = jid_to_json_path(jid, output_dir)
-            if output_file.is_file():
+            if output_file.is_file() and output_file.stat().st_size > 0:
                 continue
             kw["output_file"] = output_file
             jobs.append(delayed(_bench_one)(**kw))

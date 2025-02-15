@@ -24,6 +24,10 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
     )
     for file in progress:
         try:
+            if file.stat().st_size == 0:
+                logging.warning("Removing empty file: {}", file)
+                file.unlink(missing_ok=True)
+                continue
             with open(file, "r", encoding="utf-8") as fp:
                 data = flatten_dict(json.load(fp))
                 data["jid"] = file.stem
