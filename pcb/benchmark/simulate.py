@@ -13,7 +13,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit.quantum_info import SparsePauliOp
 from qiskit_aer.noise import NoiseModel
-from qiskit_aer.primitives import Estimator
+from qiskit_aer.primitives import EstimatorV2 as Estimator
 from qiskit_algorithms import VQE, VQEResult
 from qiskit_algorithms.optimizers import SPSA
 from qiskit_ibm_runtime import fake_provider
@@ -23,7 +23,14 @@ from tqdm import tqdm
 from ..hamlib import open_hamiltonian_file
 from ..qiskit import to_evolution_gate
 from .consolidate import consolidate
-from .utils import hash_dict, hid_to_file_key, jid_to_json_path, load, save
+from .utils import (
+    hash_dict,
+    hid_to_file_key,
+    jid_to_json_path,
+    load,
+    reorder_operator,
+    save,
+)
 
 FAKE_PROVIDERS: dict[str, type[FakeBackendV2]] = {
     "algiers": fake_provider.FakeAlgiers,
@@ -126,11 +133,7 @@ def _bench_one(
 
             if order_file is not None:
                 term_indices = load(order_file)["term_indices"].astype(int)
-                terms = operator.to_sparse_list()
-                operator = SparsePauliOp.from_sparse_list(
-                    [terms[i] for i in term_indices],
-                    num_qubits=gate.num_qubits,
-                )
+                operator = reorder_operator(operator, term_indices)
 
             cost_operator = load(circuit_file)
 

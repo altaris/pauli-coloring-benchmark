@@ -9,6 +9,7 @@ from typing import Any, Callable
 import h5py
 import numpy as np
 from qiskit import QuantumCircuit, qpy
+from qiskit.quantum_info import SparsePauliOp
 
 
 def flatten_dict(dct: dict, separator: str = "/", parent: str = "") -> dict:
@@ -103,6 +104,19 @@ def load(path: str | Path) -> Any:
         with path.open("r", encoding="utf-8") as fp:
             return json.load(fp)
     raise ValueError(f"Unsupported file extension: {extension}")
+
+
+def reorder_operator(
+    operator: SparsePauliOp, term_indices: np.ndarray
+) -> SparsePauliOp:
+    """
+    Changes the order of the terms in the operator given a term index vector,
+    which is just a permutation of `[0, 1, ..., len(operator) - 1]`.
+    """
+    terms = operator.to_sparse_list()
+    return SparsePauliOp.from_sparse_list(
+        [terms[i] for i in term_indices], num_qubits=operator.num_qubits
+    )
 
 
 def save(obj: Any, path: str | Path) -> None:
