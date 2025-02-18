@@ -27,9 +27,22 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
                 logging.warning("Removing empty file: {}", file)
                 file.unlink(missing_ok=True)
                 continue
-            data = flatten_dict(load(file))
-            data["jid"] = file.stem
-            rows.append(data)
+            data = load(file)
+            if isinstance(data, dict):
+                data = flatten_dict(data)
+                data["jid"] = file.stem
+                rows.append(data)
+            elif isinstance(data, (list, tuple)):
+                for item in data:
+                    item = flatten_dict(item)
+                    item["jid"] = file.stem
+                    rows.append(item)
+            else:
+                logging.warning(
+                    "Unexpected data type {} from file {}. Skipping",
+                    type(data),
+                    file,
+                )
         except Exception as e:
             logging.error("Error reading {}: {}", file, e)
     results = pd.DataFrame(rows)
