@@ -186,8 +186,9 @@ playground.py
 test.ipynb
 test.py
 
-# Output dir
+# Output dir or symlink
 out/
+out
 
 # Super duper secret stuff
 secret/
