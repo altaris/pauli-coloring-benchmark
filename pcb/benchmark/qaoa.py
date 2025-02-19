@@ -4,7 +4,6 @@ import numpy as np
 from loguru import logger as logging
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import QAOAAnsatz
-from qiskit.primitives import PrimitiveResult
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import EstimatorV2 as Estimator
@@ -35,6 +34,7 @@ def _cost_function(
     energy: np.float64 = job.result()[0].data.evs[0]
     if jobs is not None:
         jobs.append((parameters, job))
+        logging.debug("Iteration: {}, energy: {}", len(jobs), energy.round(5))
     return energy
 
 
@@ -47,7 +47,7 @@ def _job_to_dict(job: RuntimeJob) -> dict:
         "n_shots": meta["shots"],
         "target_precision": meta["target_precision"],
         "num_randomizations": meta["num_randomizations"],
-        "job_id": job.job_id,
+        "job_id": job.job_id(),
         "session_id": job.session_id,
     }
 
@@ -97,7 +97,7 @@ def qaoa(
     ansatz_isa = pm.run(ansatz)
     operator_isa = operator.apply_layout(ansatz_isa.layout)
 
-    _jrs: list[tuple[np.ndarray, PrimitiveResult]] = []
+    _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
     with Session(backend=backend) as session:
         logging.debug("Opened session: {}", session.session_id)
         estimator = Estimator(mode=session, options={"default_shots": n_shots})
@@ -110,16 +110,17 @@ def qaoa(
             options={"maxiter": max_iter, "disp": False},
         )
 
-    best_x, best_e = _jrs[0][0], _jrs[0][1].data.evs[0]
-    for x, r in _jrs[1:]:
-        if r[0].data.evs[0] < best_e:
-            best_x, best_e = x, r[0].data.evs[0]
+    best_x, best_e = _jrs[0][0], _jrs[0][1].result()[0].data.evs[0]
+    for x, j in _jrs[1:]:
+        e = j.result()[0].data.evs[0]
+        if e < best_e:
+            best_x, best_e = x, e
     all_x = np.stack([x for x, _ in _jrs])
-    all_e = np.array([r[0].data.evs[0] for _, r in _jrs])
+    all_e = np.array([j.result()[0].data.evs[0] for _, j in _jrs])
 
     job_results = []
-    for i, (_, r) in enumerate(_jrs):
-        data = _job_to_dict(r)
+    for i, (_, j) in enumerate(_jrs):
+        data = _job_to_dict(j)
         data.update(
             {
                 "step": i + 1,
