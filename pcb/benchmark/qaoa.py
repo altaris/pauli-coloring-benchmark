@@ -107,12 +107,13 @@ def qaoa(
                 "twirling": {
                     "enable_gates": True,
                     "num_randomizations": "auto",
-                    "dynamical_decoupling": {"enable": False},
                 },
-                "resilience_level": 3,
+                "dynamical_decoupling": {"enable": False},
+                "resilience_level": 2,
                 "seed_estimator": 0,
             },
         )
+
         x0 = 2 * np.pi * np.random.random(len(ansatz_isa.parameters))
         minimize(
             _cost_function,

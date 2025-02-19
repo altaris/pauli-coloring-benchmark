@@ -6,9 +6,10 @@ from typing import Any
 
 import filelock
 import pandas as pd
+from joblib import Parallel, delayed
 from loguru import logger as logging
-from qiskit.providers import BackendV2 as Backend
 from qiskit.quantum_info import SparsePauliOp
+from qiskit_ibm_runtime import QiskitRuntimeService
 from tqdm import tqdm
 
 from ..hamlib import open_hamiltonian_file
@@ -30,7 +31,6 @@ def _bench_one(
     key: str,
     order_file: str | Path | None,
     circuit_file: str | Path,
-    backend: Backend,
     output_file: str | Path,
     qaoa_config: dict[str, Any],
 ) -> None:
@@ -69,6 +69,13 @@ def _bench_one(
                 term_indices = load(order_file)["term_indices"].astype(int)
                 operator = reorder_operator(operator, term_indices)
             cost_qc = load(circuit_file)
+
+            service = QiskitRuntimeService()
+            backend = service.least_busy(
+                operational=True,
+                simulator=False,
+                min_num_qubits=cost_qc.num_qubits,
+            )
             _, (all_x, all_e), results = qaoa(
                 operator, cost_qc, backend, **qaoa_config
             )
@@ -90,8 +97,8 @@ def benchmark(
     reorder_result: pd.DataFrame,
     reorder_result_dir: str | Path,
     output_dir: str | Path,
-    backend: Backend,
     n_trials: int = 1,
+    n_jobs: int = 1,
 ) -> pd.DataFrame:
     """
     Args:
@@ -102,7 +109,6 @@ def benchmark(
             `hid`-`trotterization`-`n_timesteps`-`order`-`method` tuple =)
         reorder_result_dir (str | Path):
         output_dir (str | Path):
-        backend (IBMBackend):
         n_trials (int, optional):
     """
     ham_dir, reorder_result_dir = Path(ham_dir), Path(reorder_result_dir)
@@ -111,15 +117,15 @@ def benchmark(
 
     logging.debug("Number of Hamiltonians: {}", len(reorder_result))
 
-    everything = list(
-        product(
-            reorder_result.iterrows(),
-            range(n_trials),
-            [1, 2, 4],  # n_qaoa_steps
-            [3],  # preset manager optimization_level
-        )
+    jobs = []
+    everything = product(
+        reorder_result.iterrows(),
+        range(n_trials),
+        [1, 2, 4],  # n_qaoa_steps
+        [3],  # preset manager optimization_level
     )
-    for (_, row), i, n_qaoa_steps, pm_opt_lvl in tqdm(everything):
+    progress = tqdm(list(everything), desc="Listing jobs")
+    for (_, row), i, n_qaoa_steps, pm_opt_lvl in progress:
         for i in range(n_trials):
             qaoa_config = {
                 "n_qaoa_steps": n_qaoa_steps,
@@ -134,19 +140,25 @@ def benchmark(
             if output_file.is_file() and output_file.stat().st_size > 0:
                 continue
             ham_file, key = hid_to_file_key(row["hid"], ham_dir)
-            # ↓ files from the reording jobs are named like this (modulo ext.)
             p = jid_to_json_path(row["jid"], reorder_result_dir)
-
-            _bench_one(
-                ham_file=ham_file,
-                key=key,
-                order_file=(
+            kw = {
+                "ham_file": ham_file,
+                "key": key,
+                "order_file": (
                     p.with_suffix(".hdf5") if row["method"] != "none" else None
                 ),
-                circuit_file=p.with_suffix(".qpy.gz"),
-                backend=backend,
-                output_file=output_file,
-                qaoa_config=qaoa_config,
-            )
-
+                "circuit_file": p.with_suffix(".qpy.gz"),
+                "output_file": output_file,
+                "qaoa_config": qaoa_config,
+            }
+            jobs.append(delayed(_bench_one)(**kw))
+    logging.info("Submitting {} jobs", len(jobs))
+    executor = Parallel(
+        n_jobs=n_jobs,
+        prefer="processes",
+        timeout=3600 * 24,  # 24h
+        verbose=1,
+        backend="loky",
+    )
+    executor(jobs)
     return consolidate(output_dir / "jobs")
