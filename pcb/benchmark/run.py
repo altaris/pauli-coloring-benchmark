@@ -55,6 +55,7 @@ def _bench_one(
         return
     output_file.parent.mkdir(parents=True, exist_ok=True)
     hid = Path(ham_file).name.split(".")[0].replace("__", "/") + "/" + key
+    rjid = Path(circuit_file).name.split(".")[0]  # reordering job id
     lock_file = output_file.with_suffix(".lock")
     lock = filelock.FileLock(lock_file, blocking=False)
 
@@ -71,8 +72,9 @@ def _bench_one(
             _, (all_x, all_e), results = qaoa(
                 operator, cost_qc, backend, **qaoa_config
             )
+
             for r in results:
-                r.update({"hid": hid})
+                r.update({"hid": hid, "reordering_jid": rjid})
             save(results, output_file)
             save(
                 {"parameters": all_x, "energy": all_e},
@@ -123,7 +125,7 @@ def benchmark(
                 "n_qaoa_steps": n_qaoa_steps,
                 "n_shots": 1024,
                 "pm_optimization_level": pm_opt_lvl,
-                "max_iter": 1000,
+                "max_iter": 128,
             }
             jid = hash_dict(  # unique simulation job identifier
                 {"row": dict(row), "trial": i, "qaoa_config": qaoa_config}

@@ -87,7 +87,7 @@ def qaoa(
                 "step": 1,  # starting at 1
                 "n_qaoa_steps": 2,
                 "pm_optimization_level": 0,
-                "backend": "ibm_fez",
+                "backend": "ibm_...",
             }
     """
     pm = generate_preset_pass_manager(
@@ -100,7 +100,19 @@ def qaoa(
     _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
     with Session(backend=backend) as session:
         logging.debug("Opened session: {}", session.session_id)
-        estimator = Estimator(mode=session, options={"default_shots": n_shots})
+        estimator = Estimator(
+            mode=session,
+            options={
+                "default_shots": n_shots,
+                "twirling": {
+                    "enable_gates": True,
+                    "num_randomizations": "auto",
+                    "dynamical_decoupling": {"enable": False},
+                },
+                "resilience_level": 3,
+                "seed_estimator": 0,
+            },
+        )
         x0 = 2 * np.pi * np.random.random(len(ansatz_isa.parameters))
         minimize(
             _cost_function,
