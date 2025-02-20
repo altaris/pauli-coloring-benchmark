@@ -90,6 +90,10 @@ def _bench_one(
 
     except filelock.Timeout:
         pass
+    except Exception as e:
+        logging.error(
+            "Error while processing hid={}, rjid={}:\n{}", hid, rjid, e
+        )
 
 
 def benchmark(

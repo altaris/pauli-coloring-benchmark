@@ -104,12 +104,8 @@ def qaoa(
             mode=session,
             options={
                 "default_shots": n_shots,
-                "twirling": {
-                    "enable_gates": True,
-                    "num_randomizations": "auto",
-                },
                 "dynamical_decoupling": {"enable": False},
-                "resilience_level": 2,
+                "resilience_level": 1,  # no meas. twirling but not for gates
                 "seed_estimator": 0,
             },
         )
@@ -120,6 +116,7 @@ def qaoa(
             x0,
             method="cobyla",
             args=(ansatz_isa, operator_isa, estimator, _jrs),
+            tol=1e-2,
             options={"maxiter": max_iter, "disp": False},
         )
 
