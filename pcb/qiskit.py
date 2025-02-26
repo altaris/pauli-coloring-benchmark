@@ -3,6 +3,7 @@
 import random
 import re
 
+import numpy as np
 from qiskit.circuit import Parameter
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
@@ -23,21 +24,21 @@ def to_evolution_gate(
     parameter is an abstract unbound parameter called `δt`.
     """
 
-    def _m2t(trm_str: str) -> tuple[str, list[int], float]:
+    def _m2t(w_str: str, p_str: str) -> tuple[str, list[int], np.complex128]:
         """
         Example: `"Z66 X81"` becomes `("ZX", [66, 81], 1.0)`.
         """
         return (
-            "".join(re.findall(r"[IXYZ]", trm_str)),
-            [int(k) for k in re.findall(r"\d+", trm_str)],
-            1.0,
+            "".join(re.findall(r"[IXYZ]", p_str)),
+            [int(k) for k in re.findall(r"\d+", p_str)],
+            np.complex128(w_str if w_str else 1.0),
         )
 
     h = h if isinstance(h, str) else h.decode("utf-8")
-    matches = re.findall(r"\[([^\]]+)\]", h)
+    matches = re.findall(r"([+-.\dj][^\s]*) \[([^\]]+)\]", h)
     if not matches:
         raise ValueError("No terms found in Hamiltonian: " + h)
-    terms = [_m2t(m) for m in matches]
+    terms = [_m2t(*m) for m in matches]
     if shuffle:
         random.shuffle(terms)
     n_qubits = max(max(t[1]) for t in terms) + 1
