@@ -22,7 +22,9 @@ def _cost_function(
 ) -> np.float64:
     """
     Function to minimize in the `scipy.optimize.minimize` routine. It returns
-    the energy of the operator given an ansatz and a set of parameters.
+    the *NEGATIVE* of energy of the operator given an ansatz and a set of
+    parameters. Therefore, minimizing this function will find variational
+    parameters that produce a *maximal energy* state.
 
     If `jobs` is not `None`, it will append a `(parameters, job)` tuple to it.
     `job` is a
@@ -35,7 +37,7 @@ def _cost_function(
     if jobs is not None:
         jobs.append((parameters, job))
         logging.debug("Iteration: {}, energy: {}", len(jobs), energy.round(5))
-    return energy
+    return -energy
 
 
 def _job_to_dict(job: RuntimeJob) -> dict:
@@ -67,6 +69,10 @@ def qaoa(
     Runs QAOA on the given operator using the given backend. The cost operator
     $H_C$ is not obtained from the Trotterization of the operator but rather has
     to be provided explicitly.
+
+    Warning:
+        This method tries to *MAXIMIZE* the energy of the operator. If you want
+        to minimize, flip the sign of the weights in `operator`.
 
     Returns:
         1. A tuple containing the optimal parameters and the optimal energy.
