@@ -15,7 +15,8 @@
         "requests>=2.32.3",
         "tqdm>=4.67.1",
         "qiskit-algorithms>=0.3.1",
-        "qiskit-ibm-runtime>=0.35.0",
+        "qiskit-ibm-runtime==0.35.0",
+        "scipy==1.15.1",
 ]
     description = ""
     license = { file = "LICENSE" }
