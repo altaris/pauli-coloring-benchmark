@@ -125,7 +125,7 @@ def benchmark(
     everything = product(
         reorder_result.iterrows(),
         range(n_trials),
-        [1, 2, 4],  # n_qaoa_steps
+        [2],  # n_qaoa_steps
         [3],  # preset manager optimization_level
     )
     progress = tqdm(list(everything), desc="Listing jobs")

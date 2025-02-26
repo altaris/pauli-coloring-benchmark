@@ -105,7 +105,7 @@ def qaoa(
             options={
                 "default_shots": n_shots,
                 "dynamical_decoupling": {"enable": False},
-                "resilience_level": 1,  # no meas. twirling but not for gates
+                "resilience_level": 1,  # meas. twirling but not for gates
                 "seed_estimator": 0,
             },
         )
