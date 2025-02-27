@@ -47,5 +47,9 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
             logging.error("Error reading {}: {}", file, e)
     results = pd.DataFrame(rows)
     results.set_index("hid", inplace=True)
-    logging.info("Consolidated {} job results", len(results))
+    logging.info(
+        "Consolidated {} rows from {} jobs",
+        len(results),
+        len(results["jid"].unique()),
+    )
     return results
