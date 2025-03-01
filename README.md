@@ -50,35 +50,13 @@
    ```sh
    uv run python -m pcb benchmark-reorder out/index.db out/ham out/reordering
    # or
-   uv run python -m pcb benchmark-reorder out/index.db out/ham out/reordering --n-jobs 32 --methods none,saturation,misra_gries --prefix binaryoptimization/maxcut
+   uv run python -m pcb benchmark-reorder out/index.db out/ham out/reordering --prefix binaryoptimization/maxcut --n-trials 1 --n-jobs 200 --methods none,saturation,misra_gries --min-qubits 32 --max-qubits 127 --min-terms 16 --max-terms 256
    ```
 
 2. You can obtain temporary consolidated results during the benchmark by running:
 
    ```sh
    uv run python -m pcb consolidate out/reordering
-   ```
-
-   This is automatically done at the end of the benchmark.
-
-### Simulation benchmark
-
-Once the reordering benchmark is done, you can run the QAOA simulation benchmark
-to see if reordered circuits produce better ground states (approximations).
-
-1. Run the benchmark.
-
-   ```sh
-   uv run python -m pcb benchmark-simulate out/ham out/reordering out/simulation
-   # or
-   uv run python -m pcb benchmark-simulate out/ham out/reordering out/simulation --n-jobs 8 --methods none,saturation,misra_gries --prefix binaryoptimization/maxcut --max-qubits 8 --max-terms 32 --qaoa-n-shots 1024 --qaoa-n-steps 2 --qaoa-max-iter 128
-   ```
-
-2. Like for the reordering benchmark, you can obtain temporary consolidated
-   results during the benchmark by running:
-
-   ```sh
-   uv run python -m pcb consolidate out/simulation
    ```
 
    This is automatically done at the end of the benchmark.
