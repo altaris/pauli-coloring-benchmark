@@ -40,7 +40,7 @@ def to_evolution_gate(
         )
 
     h = h if isinstance(h, str) else h.decode("utf-8")
-    matches = re.findall(r"([+-.\dj][^\s]*) \[([^\]]+)\]", h)
+    matches = re.findall(r"(\(?[+-.\dj][^\s]*) \[([^\]]+)\]", h)
     if not matches:
         raise ValueError("No terms found in Hamiltonian: " + h)
     terms = [_m2t(*m) for m in matches]
