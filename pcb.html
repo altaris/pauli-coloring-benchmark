@@ -138,7 +138,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <div class="pdoc-code codehilite">
 <pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-reorder<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/reordering
 <span class="c1"># or</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-reorder<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">32</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation,misra_gries<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-reorder<span class="w"> </span>out/index.db<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">1</span><span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">200</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation,misra_gries<span class="w"> </span>--min-qubits<span class="w"> </span><span class="m">32</span><span class="w"> </span>--max-qubits<span class="w"> </span><span class="m">127</span><span class="w"> </span>--min-terms<span class="w"> </span><span class="m">16</span><span class="w"> </span>--max-terms<span class="w"> </span><span class="m">256</span>
 </code></pre>
 </div></li>
 
@@ -146,32 +146,6 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 
 <div class="pdoc-code codehilite">
 <pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/reordering
-</code></pre>
-</div>
-
-<p>This is automatically done at the end of the benchmark.</p></li>
-</ol>
-
-<h3 id="simulation-benchmark">Simulation benchmark</h3>
-
-<p>Once the reordering benchmark is done, you can run the QAOA simulation benchmark
-to see if reordered circuits produce better ground states (approximations).</p>
-
-<ol>
-<li><p>Run the benchmark.</p>
-
-<div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-simulate<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>out/simulation
-<span class="c1"># or</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>benchmark-simulate<span class="w"> </span>out/ham<span class="w"> </span>out/reordering<span class="w"> </span>out/simulation<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">8</span><span class="w"> </span>--methods<span class="w"> </span>none,saturation,misra_gries<span class="w"> </span>--prefix<span class="w"> </span>binaryoptimization/maxcut<span class="w"> </span>--max-qubits<span class="w"> </span><span class="m">8</span><span class="w"> </span>--max-terms<span class="w"> </span><span class="m">32</span><span class="w"> </span>--qaoa-n-shots<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--qaoa-n-steps<span class="w"> </span><span class="m">2</span><span class="w"> </span>--qaoa-max-iter<span class="w"> </span><span class="m">128</span>
-</code></pre>
-</div></li>
-
-<li><p>Like for the reordering benchmark, you can obtain temporary consolidated
-results during the benchmark by running:</p>
-
-<div class="pdoc-code codehilite">
-<pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pcb<span class="w"> </span>consolidate<span class="w"> </span>out/simulation
 </code></pre>
 </div>
 
