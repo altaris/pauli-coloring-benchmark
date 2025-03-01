@@ -10,7 +10,9 @@ from qiskit.quantum_info import SparsePauliOp
 
 
 def to_evolution_gate(
-    h: bytes | str, shuffle: bool = False
+    h: bytes | str,
+    shuffle: bool = False,
+    global_phase: float | np.complex128 | None = None,
 ) -> PauliEvolutionGate:
     """
     Converts a serialized sparse Pauli operator (in the format explained
@@ -28,10 +30,13 @@ def to_evolution_gate(
         """
         Example: `"Z66 X81"` becomes `("ZX", [66, 81], 1.0)`.
         """
+        w = np.complex128(w_str if w_str else 1.0)
+        if global_phase is not None:
+            w *= global_phase
         return (
             "".join(re.findall(r"[IXYZ]", p_str)),
             [int(k) for k in re.findall(r"\d+", p_str)],
-            np.complex128(w_str if w_str else 1.0),
+            w,
         )
 
     h = h if isinstance(h, str) else h.decode("utf-8")

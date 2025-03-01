@@ -62,9 +62,17 @@ def _bench_one(
     try:
         with lock:
             with open_hamiltonian_file(ham_file) as fp:
-                gate = to_evolution_gate(fp[key][()], shuffle=False)
+                gate = to_evolution_gate(
+                    fp[key][()],
+                    shuffle=False,
+                    # HOTFIX: maxcut hamiltonians in HamLib need to have their
+                    # weights flipped to be of the form sum_(i, j) Z_i Z_j, so
+                    # that a ground state encodes an optimal cut
+                    global_phase=-1,
+                )
                 operator = gate.operator
                 assert isinstance(operator, SparsePauliOp)
+
             if order_file is not None:
                 term_indices = load(order_file)["term_indices"].astype(int)
                 operator = reorder_operator(operator, term_indices)

@@ -76,7 +76,14 @@ def _bench_one(
     try:
         with lock:
             with open_hamiltonian_file(ham_file) as fp:
-                gate = to_evolution_gate(fp[key][()], shuffle=False)
+                gate = to_evolution_gate(
+                    fp[key][()],
+                    shuffle=False,
+                    # HOTFIX: maxcut hamiltonians in HamLib need to have their
+                    # weights flipped to be of the form sum_(i, j) Z_i Z_j, so
+                    # that a ground state encodes an optimal cut
+                    global_phase=-1,
+                )
 
             result: dict[str, Any] = {
                 "method": method,
