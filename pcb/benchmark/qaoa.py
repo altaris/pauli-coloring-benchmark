@@ -22,9 +22,9 @@ def _cost_function(
 ) -> np.float64:
     """
     Function to minimize in the `scipy.optimize.minimize` routine. It returns
-    the *NEGATIVE* of energy of the operator given an ansatz and a set of
-    parameters. Therefore, minimizing this function will find variational
-    parameters that produce a *maximal energy* state.
+    the of energy of the operator given an ansatz and a set of parameters.
+    Therefore, minimizing this function will find variational parameters that
+    produce a low energy state.
 
     If `jobs` is not `None`, it will append a `(parameters, job)` tuple to it.
     `job` is a
@@ -37,7 +37,7 @@ def _cost_function(
     if jobs is not None:
         jobs.append((parameters, job))
         logging.debug("Iteration: {}, energy: {}", len(jobs), energy.round(5))
-    return -energy
+    return energy
 
 
 def _job_to_dict(job: RuntimeJob) -> dict:
@@ -100,23 +100,41 @@ def qaoa(
         target=backend.target, optimization_level=pm_optimization_level
     )
     ansatz = QAOAAnsatz(cost_operator=cost_qc, reps=n_qaoa_steps)
+    ansatz.measure_all()
     ansatz_isa = pm.run(ansatz)
     operator_isa = operator.apply_layout(ansatz_isa.layout)
 
     _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
     with Session(backend=backend) as session:
         logging.debug("Opened session: {}", session.session_id)
+        # estimator = Estimator(
+        #     mode=session,
+        #     options={
+        #         "default_shots": n_shots,
+        #         "dynamical_decoupling": {"enable": False},
+        #         "resilience_level": 1,  # meas. twirling but not for gates
+        #         "seed_estimator": 0,
+        #     },
+        # )
         estimator = Estimator(
             mode=session,
             options={
                 "default_shots": n_shots,
-                "dynamical_decoupling": {"enable": False},
-                "resilience_level": 1,  # meas. twirling but not for gates
+                "dynamical_decoupling": {
+                    "enable": True,
+                    "sequence_type": "XY4",
+                },
                 "seed_estimator": 0,
+                "twirling": {
+                    "enable_gates": True,
+                    "num_randomizations": "auto",
+                },
             },
         )
-
-        x0 = 2 * np.pi * np.random.random(len(ansatz_isa.parameters))
+        x0 = np.array(
+            ([np.pi / 2] * (len(ansatz_isa.parameters) // 2))  # β's
+            + ([np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+        )
         minimize(
             _cost_function,
             x0,
