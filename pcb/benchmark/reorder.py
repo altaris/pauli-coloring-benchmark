@@ -123,7 +123,7 @@ def _bench_one(
             )
 
             save(result, output_file)
-            save(circuit, output_file.with_suffix(".qpy"))
+            save(circuit, output_file.with_suffix(".qpy.gz"))
             if method != "none":  # coloring_array is defined
                 save(
                     {"coloring": coloring_array, "term_indices": term_indices},
