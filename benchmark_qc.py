@@ -119,5 +119,4 @@ if __name__ == "__main__":
         reorder_result_dir="out/reordering",
         output_dir="out/run",
         n_trials=1,
-        n_jobs=1,
     )

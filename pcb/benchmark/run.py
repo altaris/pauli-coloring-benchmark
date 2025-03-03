@@ -6,7 +6,6 @@ from typing import Any
 
 import filelock
 import pandas as pd
-from joblib import Parallel, delayed
 from loguru import logger as logging
 from qiskit.quantum_info import SparsePauliOp
 from qiskit_ibm_runtime import QiskitRuntimeService
@@ -111,7 +110,6 @@ def benchmark(
     reorder_result_dir: str | Path,
     output_dir: str | Path,
     n_trials: int = 1,
-    n_jobs: int = 1,
 ) -> pd.DataFrame:
     """
     Args:
@@ -130,7 +128,6 @@ def benchmark(
 
     logging.debug("Number of Hamiltonians: {}", len(reorder_result))
 
-    jobs = []
     everything = product(
         reorder_result.iterrows(),
         range(n_trials),
@@ -154,24 +151,14 @@ def benchmark(
                 continue
             ham_file, key = hid_to_file_key(row["hid"], ham_dir)
             p = jid_to_json_path(row["jid"], reorder_result_dir)
-            kw = {
-                "ham_file": ham_file,
-                "key": key,
-                "order_file": (
+            _bench_one(
+                ham_file=ham_file,
+                key=key,
+                order_file=(
                     p.with_suffix(".hdf5") if row["method"] != "none" else None
                 ),
-                "circuit_file": p.with_suffix(".qpy.gz"),
-                "output_file": output_file,
-                "qaoa_config": qaoa_config,
-            }
-            jobs.append(delayed(_bench_one)(**kw))
-    logging.info("Submitting {} jobs", len(jobs))
-    executor = Parallel(
-        n_jobs=n_jobs,
-        prefer="processes",
-        timeout=3600 * 24,  # 24h
-        verbose=1,
-        backend="loky",
-    )
-    executor(jobs)
+                circuit_file=p.with_suffix(".qpy.gz"),
+                output_file=output_file,
+                qaoa_config=qaoa_config,
+            )
     return consolidate(output_dir / "jobs")
