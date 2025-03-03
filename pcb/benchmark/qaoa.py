@@ -21,9 +21,9 @@ def _cost_function(
 ) -> np.float64:
     """
     Function to minimize in the `scipy.optimize.minimize` routine. It returns
-    the of energy of the operator given an ansatz and a set of parameters.
-    Therefore, minimizing this function will find variational parameters that
-    produce a low energy state.
+    the energy **times $-1$** of the operator given an ansatz and a set of
+    parameters.  Therefore, minimizing this function will find variational
+    parameters that produce a **high energy** state.
 
     If `jobs` is not `None`, it will append a `(parameters, job)` tuple to it.
     `job` is a
@@ -36,7 +36,7 @@ def _cost_function(
     if jobs is not None:
         jobs.append((parameters, job))
         logging.debug("Iteration: {}, energy: {}", len(jobs), energy.round(5))
-    return energy
+    return -energy
 
 
 def _job_to_dict(job: RuntimeJob) -> dict:
@@ -65,9 +65,9 @@ def qaoa(
     tuple[np.ndarray, float], tuple[np.ndarray, np.ndarray], list[dict]
 ]:
     """
-    Runs QAOA on the given operator using the given backend. The cost operator
-    $H_C$ is not obtained from the Trotterization of the operator but rather has
-    to be provided explicitly.
+    Runs QAOA on the given operator using the given backend. The Trotterization
+    of the cost operator can be given explicitely as a `QuantumCircuit`.
+    Otherwise, it is automatically Trotterized.
 
     Warning:
         This method tries to *MAXIMIZE* the energy of the operator. If you want
@@ -124,10 +124,11 @@ def qaoa(
         options={"maxiter": max_iter, "disp": False},
     )
 
+    # For some reasong `minimize` doesn't actually return the best parameters...
     best_x, best_e = _jrs[0][0], _jrs[0][1].result()[0].data.evs[0]
     for x, j in _jrs[1:]:
         e = j.result()[0].data.evs[0]
-        if e < best_e:
+        if e > best_e:  # Energy maximization
             best_x, best_e = x, e
     all_x = np.stack([x for x, _ in _jrs])
     all_e = np.array([j.result()[0].data.evs[0] for _, j in _jrs])
