@@ -84,6 +84,7 @@ def _bench_one(
                 simulator=False,
                 min_num_qubits=cost_qc.num_qubits,
             )
+            logging.debug("Using backend: {}", backend.name)
             _, (all_x, all_e), results = qaoa(
                 operator, cost_qc, backend, **qaoa_config
             )

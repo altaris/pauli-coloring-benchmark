@@ -100,35 +100,22 @@ def qaoa(
         target=backend.target, optimization_level=pm_optimization_level
     )
     ansatz = QAOAAnsatz(cost_operator=cost_qc, reps=n_qaoa_steps)
-    ansatz.measure_all()
     ansatz_isa = pm.run(ansatz)
     operator_isa = operator.apply_layout(ansatz_isa.layout)
 
     _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
     with Session(backend=backend) as session:
         logging.debug("Opened session: {}", session.session_id)
-        # estimator = Estimator(
-        #     mode=session,
-        #     options={
-        #         "default_shots": n_shots,
-        #         "dynamical_decoupling": {"enable": False},
-        #         "resilience_level": 1,  # meas. twirling but not for gates
-        #         "seed_estimator": 0,
-        #     },
-        # )
         estimator = Estimator(
             mode=session,
             options={
                 "default_shots": n_shots,
-                "dynamical_decoupling": {
-                    "enable": True,
-                    "sequence_type": "XY4",
-                },
-                "seed_estimator": 0,
-                "twirling": {
-                    "enable_gates": True,
-                    "num_randomizations": "auto",
-                },
+                "dynamical_decoupling": {"enable": False},
+                "resilience_level": 1,
+                # "twirling": {
+                #     "enable_gates": True,
+                #     "num_randomizations": "auto",
+                # },
             },
         )
         x0 = np.array(
