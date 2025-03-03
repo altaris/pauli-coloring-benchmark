@@ -26,62 +26,52 @@ from .utils import (
 
 
 def _bench_one(
-    ham_file: str | Path,
-    key: str,
-    order_file: str | Path | None,
-    circuit_file: str | Path,
+    hid: str,
+    ham_dir: str | Path,
+    reorder_result: str | Path,
     output_file: str | Path,
     qaoa_config: dict[str, Any],
 ) -> None:
     """
     Args:
-        ham_file (str | Path): The `.hdf5.zip` file containing the Hamiltonian.
-        key (str): The key inside the `ham_file` to the Hamiltonian in question.
-        order_file (str | Path | None): The `.hdf5` file containing the color
-            and term indices vectors. See also
-            `pcb.benchmark.reorder._bench_one`.
-        circuit_file (str | Path): The `.qpy.gz` file containing the Trotterized
-            circuit of the operator. See also
-            `pcb.benchmark.reorder._bench_one`.
+        hid (str): Hamiltonian ID
+        ham_dir (str | Path): Directory containing the Hamiltonian files.
+        rjid (str): Reordering job ID
+        reorder_result (str | Path): Path to the file containing the reordering
+            results, e.g. `out/reorder/jobs/.../<some_jid>.json`
         output_file (str | Path): JSON file where the result of this job will be
             written to.
         qaoa_config (dict[str, Any]): Extra parameter to pass to
             `pcb.benchmark.run.qaoa`.
     """
     output_file = Path(output_file)
-
     if output_file.is_file() and output_file.stat().st_size > 0:
         return
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    hid = Path(ham_file).name.split(".")[0].replace("__", "/") + "/" + key
-    rjid = Path(circuit_file).name.split(".")[0]  # reordering job id
-    lock_file = output_file.with_suffix(".lock")
-    lock = filelock.FileLock(lock_file, blocking=False)
+
+    reorder_result = Path(reorder_result)
+    ham_file, key = hid_to_file_key(hid, ham_dir)
+    rjid = reorder_result.name
 
     try:
-        with lock:
+        lock_file = output_file.with_suffix(".lock")
+        with filelock.FileLock(lock_file, blocking=False):
             with open_hamiltonian_file(ham_file) as fp:
-                gate = to_evolution_gate(
-                    fp[key][()],
-                    shuffle=False,
-                    # HOTFIX: maxcut hamiltonians in HamLib need to have their
-                    # weights flipped to be of the form sum_(i, j) Z_i Z_j, so
-                    # that a ground state encodes an optimal cut
-                    global_phase=-1,
-                )
+                gate = to_evolution_gate(fp[key][()], shuffle=False)
                 operator = gate.operator
                 assert isinstance(operator, SparsePauliOp)
 
-            if order_file is not None:
+            order_file = reorder_result.with_suffix(".hdf5")
+            if order_file.is_file():
                 term_indices = load(order_file)["term_indices"].astype(int)
                 operator = reorder_operator(operator, term_indices)
-            cost_qc = load(circuit_file)
+            cost_qc = load(reorder_result.with_suffix(".qpy.gz"))
 
             service = QiskitRuntimeService()
             backend = service.least_busy(
                 operational=True,
                 simulator=False,
-                min_num_qubits=cost_qc.num_qubits,
+                min_num_qubits=operator.num_qubits,
             )
             logging.debug("Using backend: {}", backend.name)
             with Session(backend=backend) as session:
@@ -98,11 +88,11 @@ def _bench_one(
                         },
                     },
                 )
-                _, (all_x, all_e), results = qaoa(
+                (best_x, best_e), (all_x, all_e), results = qaoa(
                     operator=operator,
-                    cost_qc=cost_qc,
                     backend=backend,
                     estimator=estimator,
+                    cost_qc=cost_qc,
                     n_qaoa_steps=qaoa_config.get("n_qaoa_steps", 1),
                     pm_optimization_level=qaoa_config.get(
                         "pm_optimization_level", 0
@@ -114,7 +104,12 @@ def _bench_one(
                 r.update({"hid": hid, "reordering_jid": rjid})
             save(results, output_file)
             save(
-                {"parameters": all_x, "energy": all_e},
+                {
+                    "all_energies": all_e,
+                    "all_parameters": all_x,
+                    "best_energy": best_e,
+                    "best_parameters": best_x,
+                },
                 output_file.with_suffix(".hdf5"),
             )
 
@@ -170,15 +165,13 @@ def benchmark(
             output_file = jid_to_json_path(jid, output_dir)
             if output_file.is_file() and output_file.stat().st_size > 0:
                 continue
-            ham_file, key = hid_to_file_key(row["hid"], ham_dir)
-            p = jid_to_json_path(row["jid"], reorder_result_dir)
+
             _bench_one(
-                ham_file=ham_file,
-                key=key,
-                order_file=(
-                    p.with_suffix(".hdf5") if row["method"] != "none" else None
+                hid=row["hid"],
+                ham_dir=ham_dir,
+                reorder_result=jid_to_json_path(
+                    row["jid"], reorder_result_dir
                 ),
-                circuit_file=p.with_suffix(".qpy.gz"),
                 output_file=output_file,
                 qaoa_config=qaoa_config,
             )

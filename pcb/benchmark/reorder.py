@@ -23,9 +23,9 @@ ONE_MS = timedelta(milliseconds=1)
 
 
 def _bench_one(
-    ham_file: str | Path,
+    hid: str,
+    ham_dir: str | Path,
     output_file: str | Path,
-    key: str,
     trotterization: Literal["lie_trotter", "suzuki_trotter"],
     method: Literal[
         "degree_c",
@@ -65,25 +65,17 @@ def _bench_one(
     extension.
     """
 
-    ham_file = Path(ham_file)
     output_file = Path(output_file)
     if output_file.is_file() and output_file.stat().st_size > 0:
         return
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    lock_file = output_file.with_suffix(".lock")
-    lock = filelock.FileLock(lock_file, blocking=False)
+    ham_file, key = hid_to_file_key(hid, ham_dir)
 
     try:
-        with lock:
+        lock_file = output_file.with_suffix(".lock")
+        with filelock.FileLock(lock_file, blocking=False):
             with open_hamiltonian_file(ham_file) as fp:
-                gate = to_evolution_gate(
-                    fp[key][()],
-                    shuffle=False,
-                    # HOTFIX: maxcut hamiltonians in HamLib need to have their
-                    # weights flipped to be of the form sum_(i, j) Z_i Z_j, so
-                    # that a ground state encodes an optimal cut
-                    global_phase=-1,
-                )
+                gate = to_evolution_gate(fp[key][()], shuffle=False)
 
             result: dict[str, Any] = {
                 "method": method,
@@ -92,9 +84,7 @@ def _bench_one(
                 "n_timesteps": n_timesteps,
                 "order": order,
                 "trotterization": trotterization,
-                "hid": (
-                    ham_file.name.split(".")[0].replace("__", "/") + "/" + key
-                ),
+                "hid": hid,
             }
 
             reordering_time = 0.0
@@ -162,7 +152,6 @@ def benchmark(
     jobs = []
     progress = tqdm(index.iterrows(), desc="Listing jobs", total=len(index))
     for _, row in progress:
-        ham_path, key = hid_to_file_key(row["hid"], ham_dir)
         everything = product(
             ["suzuki_trotter"],
             methods,
@@ -172,8 +161,8 @@ def benchmark(
         )
         for trotterization, method, order, n_timesteps, i in everything:
             kw = {
-                "ham_file": ham_path,
-                "key": key,
+                "hid": row["hid"],
+                "ham_dir": ham_dir,
                 "trotterization": trotterization,
                 "method": method,
                 "order": order,
