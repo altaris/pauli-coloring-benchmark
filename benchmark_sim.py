@@ -1,5 +1,5 @@
 """
-"Quick" and dirty way to run the QAOA benchmark on a real quantum computer.
+"Quick" and dirty way to run the QAOA benchmark by simulation.
 """
 
 import sqlite3
@@ -7,7 +7,7 @@ import sqlite3
 import pandas as pd
 from loguru import logger as logging
 
-from pcb.benchmark.run import benchmark
+from pcb.benchmark.simulate import benchmark
 
 if __name__ == "__main__":
     # =========================================================================
@@ -21,12 +21,8 @@ if __name__ == "__main__":
         "`trotterization` = 'suzuki_trotter'",
         "`n_timesteps` = 1",
         "`order` = 4",
-        "`n_qubits` >= 64",
-        "`n_qubits` <= 127",
-        "`n_terms` >= 16",
-        "`n_terms` <= 64",
-        "`depth` >= 16",
-        "`depth` <= 256",
+        "`n_qubits` <= 64",
+        "`n_terms` <= 16",
     ]
     QUERY = "SELECT * FROM `results` WHERE " + " AND ".join(clauses)
     with sqlite3.connect("out/reorder.hcs=m/results.db") as db:
@@ -69,44 +65,12 @@ if __name__ == "__main__":
     logging.info("Preprocessing done, left with {} rows", len(df))
 
     # =========================================================================
-    # PICK THE "TOP" HAMILTONIANS
+    # SORT HAMILTONIANS
     # =========================================================================
 
-    N_CANDIDATE_HAM = 25
-    d, hids = df[df["method"] == "none"], set()
-    criterions = [  # (columns name, sort ascending?)
-        ("n_terms", False),  # Hams. with most terms
-        # ("n_qubits", False),  # Hams. with most qubits
-        # ("depth", False),  # Hams. with deepest evo. circuit
-        # ("depth_pc", True),  # Hams. with best evo. circuit depth reduction
-    ]
-    logging.debug(
-        "Selecting top {} Hamiltonians by {}",
-        N_CANDIDATE_HAM,
-        ", ".join(c[0] for c in criterions),
+    df.sort_values(
+        ["n_terms", "depth", "n_qubits"], ascending=True, inplace=True
     )
-    for column, ascending in criterions:
-        e = d.sort_values(column, ascending=ascending).head(N_CANDIDATE_HAM)
-        hids |= set(e["hid"])
-
-    # =========================================================================
-    # FILTER THE DATAFRAME TO ONLY KEEP THE SELECTED HAMILTONIANS
-    # =========================================================================
-
-    df = df[df["hid"].isin(hids)]
-    logging.info(
-        "Selected {} Hamiltonians corresponding to {} experiments",
-        len(hids),
-        len(df),
-    )
-    logging.debug("HIDs:\n    {}", "\n    ".join(hids))
-    lst = [
-        f"{row['jid']} method={row['method']:<15}, "
-        f"n_qubits={row['n_qubits']:<3d}, n_terms={row['n_terms']:<4d}, "
-        f"depth={row['depth']:<4d}, depth%={row['depth_pc']:<3.2f}"
-        for _, row in df.iterrows()
-    ]
-    logging.debug("Reordering JIDs:\n    {}", "\n    ".join(lst))
 
     # =========================================================================
     # RUN THE BENCHMARK AND GO HOME
@@ -117,6 +81,7 @@ if __name__ == "__main__":
         ham_dir="out/ham",
         reorder_result=df,
         reorder_result_dir="out/reorder.hcs=m",
-        output_dir="out/run",
+        output_dir="out/sim.hm=p,hc=m,max",
         n_trials=1,
+        n_jobs=16,
     )

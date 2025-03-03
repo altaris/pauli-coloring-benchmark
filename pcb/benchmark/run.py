@@ -1,6 +1,5 @@
 """QAOA benchmarking on an actual IBM quantum computer."""
 
-from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -13,12 +12,9 @@ from qiskit_ibm_runtime import QiskitRuntimeService, Session
 
 from ..hamlib import open_hamiltonian_file
 from ..qiskit import to_evolution_gate
-from .consolidate import consolidate
 from .qaoa import qaoa
 from .utils import (
-    hash_dict,
     hid_to_file_key,
-    jid_to_json_path,
     load,
     reorder_operator,
     save,
@@ -130,49 +126,16 @@ def benchmark(
 ) -> pd.DataFrame:
     """
     Args:
-        ham_dir (str | Path):
-        reorder_result (pd.DataFrame): Dataframe containing at least the columns
-            `hid`, `trotterization`, `n_timesteps`, `order`, `method`, `jid`.
-            You might want to make sure it only has one row per
-            `hid`-`trotterization`-`n_timesteps`-`order`-`method` tuple =)
-        reorder_result_dir (str | Path):
-        output_dir (str | Path):
-        n_trials (int, optional):
+        Same as `pcb.benchmark.simulate.benchmark`
     """
-    ham_dir, reorder_result_dir = Path(ham_dir), Path(reorder_result_dir)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    from .simulate import benchmark as _benchmark
 
-    logging.debug("Number of Hamiltonians: {}", len(reorder_result))
-
-    everything = product(
-        reorder_result.iterrows(),
-        range(n_trials),
-        [2],  # n_qaoa_steps
-        [3],  # preset manager optimization_level
+    return _benchmark(
+        ham_dir=ham_dir,
+        reorder_result=reorder_result,
+        reorder_result_dir=reorder_result_dir,
+        output_dir=output_dir,
+        n_trials=n_trials,
+        n_jobs=1,
+        _bench_one_override=_bench_one,
     )
-    for (_, row), i, n_qaoa_steps, pm_opt_lvl in everything:
-        for i in range(n_trials):
-            qaoa_config = {
-                "n_qaoa_steps": n_qaoa_steps,
-                "n_shots": 1024,
-                "pm_optimization_level": pm_opt_lvl,
-                "max_iter": 128,
-            }
-            jid = hash_dict(  # unique simulation job identifier
-                {"row": dict(row), "trial": i, "qaoa_config": qaoa_config}
-            )
-            output_file = jid_to_json_path(jid, output_dir)
-            if output_file.is_file() and output_file.stat().st_size > 0:
-                continue
-
-            _bench_one(
-                hid=row["hid"],
-                ham_dir=ham_dir,
-                reorder_result=jid_to_json_path(
-                    row["jid"], reorder_result_dir
-                ),
-                output_file=output_file,
-                qaoa_config=qaoa_config,
-            )
-    return consolidate(output_dir / "jobs")

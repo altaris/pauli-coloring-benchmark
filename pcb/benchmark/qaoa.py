@@ -7,7 +7,8 @@ from qiskit.circuit.library import QAOAAnsatz
 from qiskit.providers import BackendV2 as Backend
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from qiskit_ibm_runtime import EstimatorV2 as Estimator
+from qiskit_aer.primitives import EstimatorV2 as AerEstimator
+from qiskit_ibm_runtime import EstimatorV2 as IBMEstimator
 from qiskit_ibm_runtime import RuntimeJobV2 as RuntimeJob
 from scipy.optimize import minimize
 
@@ -16,7 +17,7 @@ def _cost_function(
     parameters: np.ndarray,
     ansatz: QuantumCircuit,
     operator: SparsePauliOp,
-    estimator: Estimator,
+    estimator: IBMEstimator | AerEstimator,
     jobs: list[tuple[np.ndarray, RuntimeJob]] | None = None,
 ) -> np.float64:
     """
@@ -40,23 +41,20 @@ def _cost_function(
 
 
 def _job_to_dict(job: RuntimeJob) -> dict:
-    data, meta = job.result()[0].data, job.result()[0].metadata
+    data = job.result()[0].data
     return {
         "energy": float(data.evs[0]),
         "std": float(data.stds[0]),
-        "ensemble_standard_error": float(data.ensemble_standard_error[0]),
-        "n_shots": meta["shots"],
-        "target_precision": meta["target_precision"],
-        "num_randomizations": meta["num_randomizations"],
         "job_id": job.job_id(),
-        "session_id": job.session_id,
+        "session_id": getattr(job, "session_id", None),
+        # ↑ doesn't exist for sims.
     }
 
 
 def qaoa(
     operator: SparsePauliOp,
     backend: Backend,
-    estimator: Estimator,
+    estimator: IBMEstimator | AerEstimator,
     cost_qc: QuantumCircuit | None = None,
     n_qaoa_steps: int = 1,
     pm_optimization_level: int = 0,
@@ -79,21 +77,17 @@ def qaoa(
            array of all resulting energies.
         3. A list of dict decribing the results of each job. An element looks
            like:
+        {
+            "energy": -0.006450488764709524,
+            "std": 0.0,
+            "job_id": "3c94c73c-385b-4e71-8675-e3e1ad76aa4e",
+            "session_id": None,
+            "step": 1,
+            "n_qaoa_steps": 2,
+            "pm_optimization_level": 3,
+            "backend": "fake_kawasaki"
+        }
 
-            {
-                "energy": 0.4211,
-                "std": 0.2941,
-                "ensemble_standard_error": 0.3042,
-                "n_shots": 1024,
-                "target_precision": 0.0312,
-                "num_randomizations": 16,
-                "job_id": "...",
-                "session_id": "...",
-                "step": 1,  # starting at 1
-                "n_qaoa_steps": 2,
-                "pm_optimization_level": 0,
-                "backend": "ibm_...",
-            }
     """
     pm = generate_preset_pass_manager(
         target=backend.target, optimization_level=pm_optimization_level
@@ -104,7 +98,7 @@ def qaoa(
     )
     ansatz_isa = pm.run(ansatz)
     logging.debug(
-        "ISA Ansatz depth/size: {}/{}",
+        "ISA ansatz depth/size: {}/{}",
         ansatz_isa.depth(),
         ansatz_isa.size(),
     )
