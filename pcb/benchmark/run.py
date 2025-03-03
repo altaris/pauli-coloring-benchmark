@@ -8,8 +8,8 @@ import filelock
 import pandas as pd
 from loguru import logger as logging
 from qiskit.quantum_info import SparsePauliOp
-from qiskit_ibm_runtime import QiskitRuntimeService
-from tqdm import tqdm
+from qiskit_ibm_runtime import EstimatorV2 as Estimator
+from qiskit_ibm_runtime import QiskitRuntimeService, Session
 
 from ..hamlib import open_hamiltonian_file
 from ..qiskit import to_evolution_gate
@@ -84,9 +84,31 @@ def _bench_one(
                 min_num_qubits=cost_qc.num_qubits,
             )
             logging.debug("Using backend: {}", backend.name)
-            _, (all_x, all_e), results = qaoa(
-                operator, cost_qc, backend, **qaoa_config
-            )
+            with Session(backend=backend) as session:
+                logging.debug("Opened session: {}", session.session_id)
+                estimator = Estimator(
+                    mode=session,
+                    options={
+                        "default_shots": qaoa_config.get("n_shots", 1024),
+                        "dynamical_decoupling": {"enable": False},
+                        # "resilience_level": 3,
+                        "twirling": {
+                            "enable_gates": True,
+                            "num_randomizations": "auto",
+                        },
+                    },
+                )
+                _, (all_x, all_e), results = qaoa(
+                    operator=operator,
+                    cost_qc=cost_qc,
+                    backend=backend,
+                    estimator=estimator,
+                    n_qaoa_steps=qaoa_config.get("n_qaoa_steps", 1),
+                    pm_optimization_level=qaoa_config.get(
+                        "pm_optimization_level", 0
+                    ),
+                    max_iter=qaoa_config.get("max_iter", 1000),
+                )
 
             for r in results:
                 r.update({"hid": hid, "reordering_jid": rjid})
@@ -134,8 +156,7 @@ def benchmark(
         [2],  # n_qaoa_steps
         [3],  # preset manager optimization_level
     )
-    progress = tqdm(list(everything), desc="Listing jobs")
-    for (_, row), i, n_qaoa_steps, pm_opt_lvl in progress:
+    for (_, row), i, n_qaoa_steps, pm_opt_lvl in everything:
         for i in range(n_trials):
             qaoa_config = {
                 "n_qaoa_steps": n_qaoa_steps,

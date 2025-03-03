@@ -4,12 +4,11 @@ import numpy as np
 from loguru import logger as logging
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import QAOAAnsatz
+from qiskit.providers import BackendV2 as Backend
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import EstimatorV2 as Estimator
 from qiskit_ibm_runtime import RuntimeJobV2 as RuntimeJob
-from qiskit_ibm_runtime import Session
-from qiskit_ibm_runtime.ibm_backend import IBMBackend
 from scipy.optimize import minimize
 
 
@@ -56,10 +55,10 @@ def _job_to_dict(job: RuntimeJob) -> dict:
 
 def qaoa(
     operator: SparsePauliOp,
-    cost_qc: QuantumCircuit,
-    backend: IBMBackend,
+    backend: Backend,
+    estimator: Estimator,
+    cost_qc: QuantumCircuit | None = None,
     n_qaoa_steps: int = 1,
-    n_shots: int = 1024,
     pm_optimization_level: int = 0,
     max_iter: int = 1000,
 ) -> tuple[
@@ -99,37 +98,31 @@ def qaoa(
     pm = generate_preset_pass_manager(
         target=backend.target, optimization_level=pm_optimization_level
     )
-    ansatz = QAOAAnsatz(cost_operator=cost_qc, reps=n_qaoa_steps)
+    ansatz = QAOAAnsatz(
+        cost_operator=cost_qc if cost_qc is not None else operator,
+        reps=n_qaoa_steps,
+    )
     ansatz_isa = pm.run(ansatz)
+    logging.debug(
+        "ISA Ansatz depth/size: {}/{}",
+        ansatz_isa.depth(),
+        ansatz_isa.size(),
+    )
     operator_isa = operator.apply_layout(ansatz_isa.layout)
 
     _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
-    with Session(backend=backend) as session:
-        logging.debug("Opened session: {}", session.session_id)
-        estimator = Estimator(
-            mode=session,
-            options={
-                "default_shots": n_shots,
-                "dynamical_decoupling": {"enable": False},
-                "resilience_level": 1,
-                # "twirling": {
-                #     "enable_gates": True,
-                #     "num_randomizations": "auto",
-                # },
-            },
-        )
-        x0 = np.array(
-            ([np.pi / 2] * (len(ansatz_isa.parameters) // 2))  # β's
-            + ([np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
-        )
-        minimize(
-            _cost_function,
-            x0,
-            method="cobyla",
-            args=(ansatz_isa, operator_isa, estimator, _jrs),
-            tol=1e-2,
-            options={"maxiter": max_iter, "disp": False},
-        )
+    x0 = np.array(
+        ([np.pi / 2] * (len(ansatz_isa.parameters) // 2))  # β's
+        + ([np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+    )
+    minimize(
+        _cost_function,
+        x0,
+        method="cobyla",
+        args=(ansatz_isa, operator_isa, estimator, _jrs),
+        tol=1e-2,
+        options={"maxiter": max_iter, "disp": False},
+    )
 
     best_x, best_e = _jrs[0][0], _jrs[0][1].result()[0].data.evs[0]
     for x, j in _jrs[1:]:
