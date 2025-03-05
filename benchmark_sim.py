@@ -83,5 +83,5 @@ if __name__ == "__main__":
         reorder_result_dir="out/reorder.hcs=m",
         output_dir="out/sim.hm=p,hc=m,max",
         n_trials=1,
-        n_jobs=16,
+        n_jobs=8,
     )
