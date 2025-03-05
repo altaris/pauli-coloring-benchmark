@@ -10,15 +10,10 @@ from qiskit.quantum_info import SparsePauliOp
 from qiskit_ibm_runtime import EstimatorV2 as Estimator
 from qiskit_ibm_runtime import QiskitRuntimeService, Session
 
-from ..hamlib import open_hamiltonian_file
-from ..qiskit import to_evolution_gate
-from .qaoa import qaoa
-from .utils import (
-    hid_to_file_key,
-    load,
-    reorder_operator,
-    save,
-)
+from ..hamlib import hid_to_file_key, open_hamiltonian_file
+from ..io import load, save
+from ..qaoa import qaoa
+from ..qiskit import reorder_operator, to_evolution_gate
 
 
 def _bench_one(

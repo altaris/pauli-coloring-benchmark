@@ -15,18 +15,13 @@ from qiskit_aer.primitives import EstimatorV2 as Estimator
 from qiskit_ibm_runtime.fake_provider import FakeKawasaki
 from tqdm import tqdm
 
-from ..hamlib import open_hamiltonian_file
-from ..qiskit import to_evolution_gate
+from ..hamlib import hid_to_file_key, open_hamiltonian_file
+from ..io import load, save
+from ..qaoa import qaoa
+from ..qiskit import reorder_operator, to_evolution_gate
+from ..utils import hash_dict
 from .consolidate import consolidate
-from .qaoa import qaoa
-from .utils import (
-    hash_dict,
-    hid_to_file_key,
-    jid_to_json_path,
-    load,
-    reorder_operator,
-    save,
-)
+from .utils import jid_to_json_path
 
 
 def _bench_one(

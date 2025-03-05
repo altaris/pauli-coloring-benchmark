@@ -50,3 +50,17 @@ def to_evolution_gate(
     operator = SparsePauliOp.from_sparse_list(terms, n_qubits)
     dt = Parameter("δt")
     return PauliEvolutionGate(operator, dt)
+
+
+def reorder_operator(
+    operator: SparsePauliOp, term_indices: np.ndarray
+) -> SparsePauliOp:
+    """
+    Changes the order of the terms in the operator given a term index vector,
+    which is just a permutation of `[0, 1, ..., len(operator) - 1]`.
+    """
+    terms = operator.to_sparse_list()
+    return SparsePauliOp.from_sparse_list(
+        [terms[i] for i in term_indices], num_qubits=operator.num_qubits
+    )
+

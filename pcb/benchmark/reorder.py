@@ -12,12 +12,14 @@ from loguru import logger as logging
 from qiskit.synthesis import LieTrotter, SuzukiTrotter
 from tqdm import tqdm
 
-from ..hamlib import open_hamiltonian_file
+from ..hamlib import hid_to_file_key, open_hamiltonian_file
+from ..io import save
 from ..qiskit import to_evolution_gate
 from ..reordering import reorder
 from ..reordering.utils import coloring_to_array
+from ..utils import hash_dict
 from .consolidate import consolidate
-from .utils import hash_dict, hid_to_file_key, jid_to_json_path, save
+from .utils import jid_to_json_path
 
 ONE_MS = timedelta(milliseconds=1)
 

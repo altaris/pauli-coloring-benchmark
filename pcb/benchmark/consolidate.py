@@ -9,7 +9,8 @@ import pandas as pd
 from loguru import logger as logging
 from tqdm import tqdm
 
-from .utils import flatten_dict, load
+from ..io import load
+from ..utils import flatten_dict
 
 
 def consolidate(jobs_dir: str | Path) -> pd.DataFrame:

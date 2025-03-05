@@ -44,6 +44,16 @@ def _all_csv_urls(base_url: str) -> Generator[str, None, None]:
                 yield new_url
 
 
+def hid_to_file_key(hid: str, ham_dir: str | Path) -> tuple[Path, str]:
+    """
+    Converts a Hamiltonian ID to a `.hdf5.zip` file path and a key inside the
+    HDF5 file.
+    """
+    p = Path(ham_dir) / ("__".join(hid.split("/")[:-1]) + ".hdf5.zip")
+    k = hid.split("/")[-1]
+    return p, k
+
+
 @contextmanager
 def open_hamiltonian_file(
     path: str | Path,
