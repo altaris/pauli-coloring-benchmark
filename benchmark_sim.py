@@ -7,7 +7,7 @@ import sqlite3
 import pandas as pd
 from loguru import logger as logging
 
-from pcb.benchmark.simulate import benchmark
+from pcb.benchmark.run import benchmark
 
 if __name__ == "__main__":
     # =========================================================================
@@ -84,4 +84,5 @@ if __name__ == "__main__":
         output_dir="out/sim.hm=p,hc=m,max",
         n_trials=1,
         n_jobs=8,
+        mode="aer",
     )
