@@ -1,5 +1,6 @@
 """Implementation of the QAOA algorithm."""
 
+from functools import partial
 import numpy as np
 from loguru import logger as logging
 from qiskit import QuantumCircuit
@@ -10,7 +11,7 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_aer.primitives import EstimatorV2 as AerEstimator
 from qiskit_ibm_runtime import EstimatorV2 as IBMEstimator
 from qiskit_ibm_runtime import RuntimeJobV2 as RuntimeJob
-from scipy.optimize import minimize
+import nevergrad as ng
 
 
 def _cost_function(
@@ -103,22 +104,28 @@ def qaoa(
         ansatz_isa.size(),
     )
     operator_isa = operator.apply_layout(ansatz_isa.layout)
-
     _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
-    x0 = np.array(
-        ([np.pi / 2] * (len(ansatz_isa.parameters) // 2))  # β's
-        + ([np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+    parametrization = ng.p.Array(
+        shape=(len(ansatz_isa.parameters),),
+        lower=0,
+        upper=np.array(
+            ([np.pi] * (len(ansatz_isa.parameters) // 2))  # β's
+            + ([2 * np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+        ),
     )
-    minimize(
-        _cost_function,
-        x0,
-        method="cobyla",
-        args=(ansatz_isa, operator_isa, estimator, _jrs),
-        tol=1e-2,
-        options={"maxiter": max_iter, "disp": False},
+    optimizer = ng.optimizers.NGOpt(
+        parametrization=parametrization, budget=max_iter
     )
-
-    # For some reasong `minimize` doesn't actually return the best parameters...
+    optimizer.minimize(
+        partial(
+            _cost_function,
+            ansatz=ansatz_isa,
+            operator=operator_isa,
+            estimator=estimator,
+            jobs=_jrs,
+        ),
+        verbosity=2,
+    )
     best_x, best_e = _jrs[0][0], _jrs[0][1].result()[0].data.evs[0]
     for x, j in _jrs[1:]:
         e = j.result()[0].data.evs[0]
