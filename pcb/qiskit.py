@@ -2,8 +2,10 @@
 
 import random
 import re
+from typing import overload
 
 import numpy as np
+from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
@@ -64,3 +66,43 @@ def reorder_operator(
         [terms[i] for i in term_indices], num_qubits=operator.num_qubits
     )
 
+
+@overload
+def trim_qc(
+    qc: QuantumCircuit, op: None = None
+) -> tuple[QuantumCircuit, None]: ...
+@overload
+def trim_qc(
+    qc: QuantumCircuit, op: SparsePauliOp
+) -> tuple[QuantumCircuit, SparsePauliOp]: ...
+
+
+def trim_qc(
+    qc: QuantumCircuit, op: SparsePauliOp | None = None
+) -> tuple[QuantumCircuit, SparsePauliOp | None]:
+    """
+    Removes all idle qubits in a QuantumCircuit. If `op` is provided, also
+    removes the same qubits from the operator.
+
+    Warning:
+        Does not remove final measurements. So if this circuit has a final
+        complete measurement, this method cannot do anything.
+
+    See also:
+        https://quantumcomputing.stackexchange.com/questions/25672/remove-inactive-qubits-from-qiskit-circuit/37192#37192
+    """
+    index = dict(zip(qc.qubits, range(len(qc.qubits))))
+    used: list[int] = []
+    for gate in qc.data:
+        used.extend([index[qubit] for qubit in gate.qubits])
+    used = sorted(set(used))
+    qc = QuantumCircuit.from_instructions(qc.data)
+    if isinstance(op, SparsePauliOp):
+        op = SparsePauliOp.from_list(
+            [
+                ("".join(s[::-1][i] for i in used)[::-1], w)
+                for s, w in op.to_list()
+            ],
+            num_qubits=len(used),
+        )
+    return qc, op
