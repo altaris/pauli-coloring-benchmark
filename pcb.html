@@ -56,13 +56,42 @@
 
             <h2>Submodules</h2>
             <ul>
-                    <li><a href="pcb/benchmark.html">benchmark</a></li>
-                    <li><a href="pcb/hamlib.html">hamlib</a></li>
-                    <li><a href="pcb/logging.html">logging</a></li>
-                    <li><a href="pcb/qiskit.html">qiskit</a></li>
-                    <li><a href="pcb/reordering.html">reordering</a></li>
-                    <li><a href="pcb/utils.html">utils</a></li>
+                    <li><a href="pcb/qaoa.html">qaoa</a></li>
             </ul>
+
+            <h2>API Documentation</h2>
+                <ul class="memberlist">
+            <li>
+                    <a class="function" href="#hid_to_file_key">hid_to_file_key</a>
+            </li>
+            <li>
+                    <a class="function" href="#jid_to_json_path">jid_to_json_path</a>
+            </li>
+            <li>
+                    <a class="function" href="#load">load</a>
+            </li>
+            <li>
+                    <a class="function" href="#open_hamiltonian_file">open_hamiltonian_file</a>
+            </li>
+            <li>
+                    <a class="function" href="#qaoa">qaoa</a>
+            </li>
+            <li>
+                    <a class="function" href="#reorder_operator">reorder_operator</a>
+            </li>
+            <li>
+                    <a class="function" href="#reorder">reorder</a>
+            </li>
+            <li>
+                    <a class="function" href="#save">save</a>
+            </li>
+            <li>
+                    <a class="function" href="#to_evolution_gate">to_evolution_gate</a>
+            </li>
+            <li>
+                    <a class="function" href="#trim_qc">trim_qc</a>
+            </li>
+    </ul>
 
 
 
@@ -166,14 +195,653 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 
                         <label class="view-source-button" for="mod-pcb-view-source"><span>View Source</span></label>
 
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos">1</span></a><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="L-2"><a href="#L-2"><span class="linenos">2</span></a><span class="sd">.. include:: ../README.md</span>
-</span><span id="L-3"><a href="#L-3"><span class="linenos">3</span></a><span class="sd">.. include:: ../CHANGELOG.md</span>
-</span><span id="L-4"><a href="#L-4"><span class="linenos">4</span></a><span class="sd">&quot;&quot;&quot;</span>
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a><span class="sd">.. include:: ../README.md</span>
+</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="sd">.. include:: ../CHANGELOG.md</span>
+</span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.benchmark</span><span class="w"> </span><span class="kn">import</span> <span class="n">jid_to_json_path</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.hamlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">hid_to_file_key</span><span class="p">,</span> <span class="n">open_hamiltonian_file</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">save</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.qaoa</span><span class="w"> </span><span class="kn">import</span> <span class="n">qaoa</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.qiskit</span><span class="w"> </span><span class="kn">import</span> <span class="n">reorder_operator</span><span class="p">,</span> <span class="n">to_evolution_gate</span><span class="p">,</span> <span class="n">trim_qc</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.reordering</span><span class="w"> </span><span class="kn">import</span> <span class="n">reorder</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="s2">&quot;hid_to_file_key&quot;</span><span class="p">,</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="s2">&quot;jid_to_json_path&quot;</span><span class="p">,</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="s2">&quot;load&quot;</span><span class="p">,</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="s2">&quot;open_hamiltonian_file&quot;</span><span class="p">,</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>    <span class="s2">&quot;qaoa&quot;</span><span class="p">,</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="s2">&quot;reorder_operator&quot;</span><span class="p">,</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="s2">&quot;reorder&quot;</span><span class="p">,</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="s2">&quot;save&quot;</span><span class="p">,</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="s2">&quot;to_evolution_gate&quot;</span><span class="p">,</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="s2">&quot;trim_qc&quot;</span><span class="p">,</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a><span class="p">]</span>
 </span></pre></div>
 
 
             </section>
+                <section id="hid_to_file_key">
+                            <input id="hid_to_file_key-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">hid_to_file_key</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">hid</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">ham_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="hid_to_file_key-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#hid_to_file_key"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="hid_to_file_key-48"><a href="#hid_to_file_key-48"><span class="linenos">48</span></a><span class="k">def</span><span class="w"> </span><span class="nf">hid_to_file_key</span><span class="p">(</span><span class="n">hid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ham_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="hid_to_file_key-49"><a href="#hid_to_file_key-49"><span class="linenos">49</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="hid_to_file_key-50"><a href="#hid_to_file_key-50"><span class="linenos">50</span></a><span class="sd">    Converts a Hamiltonian ID to a `.hdf5.zip` file path and a key inside the</span>
+</span><span id="hid_to_file_key-51"><a href="#hid_to_file_key-51"><span class="linenos">51</span></a><span class="sd">    HDF5 file.</span>
+</span><span id="hid_to_file_key-52"><a href="#hid_to_file_key-52"><span class="linenos">52</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="hid_to_file_key-53"><a href="#hid_to_file_key-53"><span class="linenos">53</span></a>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ham_dir</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hid</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;.hdf5.zip&quot;</span><span class="p">)</span>
+</span><span id="hid_to_file_key-54"><a href="#hid_to_file_key-54"><span class="linenos">54</span></a>    <span class="n">k</span> <span class="o">=</span> <span class="n">hid</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="hid_to_file_key-55"><a href="#hid_to_file_key-55"><span class="linenos">55</span></a>    <span class="k">return</span> <span class="n">p</span><span class="p">,</span> <span class="n">k</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Converts a Hamiltonian ID to a <code>.hdf5.zip</code> file path and a key inside the
+HDF5 file.</p>
+</div>
+
+
+                </section>
+                <section id="jid_to_json_path">
+                            <input id="jid_to_json_path-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">jid_to_json_path</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">jid</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
+
+                <label class="view-source-button" for="jid_to_json_path-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#jid_to_json_path"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="jid_to_json_path-7"><a href="#jid_to_json_path-7"><span class="linenos"> 7</span></a><span class="k">def</span><span class="w"> </span><span class="nf">jid_to_json_path</span><span class="p">(</span><span class="n">jid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="jid_to_json_path-8"><a href="#jid_to_json_path-8"><span class="linenos"> 8</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="jid_to_json_path-9"><a href="#jid_to_json_path-9"><span class="linenos"> 9</span></a><span class="sd">    Converts a job ID to a JSON file path that looks like</span>
+</span><span id="jid_to_json_path-10"><a href="#jid_to_json_path-10"><span class="linenos">10</span></a>
+</span><span id="jid_to_json_path-11"><a href="#jid_to_json_path-11"><span class="linenos">11</span></a><span class="sd">        output_dir / jobs / jid[:2] / jid[2:4] / jid.json</span>
+</span><span id="jid_to_json_path-12"><a href="#jid_to_json_path-12"><span class="linenos">12</span></a>
+</span><span id="jid_to_json_path-13"><a href="#jid_to_json_path-13"><span class="linenos">13</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="jid_to_json_path-14"><a href="#jid_to_json_path-14"><span class="linenos">14</span></a>    <span class="k">return</span> <span class="p">(</span>
+</span><span id="jid_to_json_path-15"><a href="#jid_to_json_path-15"><span class="linenos">15</span></a>        <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+</span><span id="jid_to_json_path-16"><a href="#jid_to_json_path-16"><span class="linenos">16</span></a>        <span class="o">/</span> <span class="s2">&quot;jobs&quot;</span>
+</span><span id="jid_to_json_path-17"><a href="#jid_to_json_path-17"><span class="linenos">17</span></a>        <span class="o">/</span> <span class="n">jid</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># spread files in subdirs</span>
+</span><span id="jid_to_json_path-18"><a href="#jid_to_json_path-18"><span class="linenos">18</span></a>        <span class="o">/</span> <span class="n">jid</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+</span><span id="jid_to_json_path-19"><a href="#jid_to_json_path-19"><span class="linenos">19</span></a>        <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">jid</span><span class="si">}</span><span class="s2">.json&quot;</span>
+</span><span id="jid_to_json_path-20"><a href="#jid_to_json_path-20"><span class="linenos">20</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Converts a job ID to a JSON file path that looks like</p>
+
+<pre><code>output_dir / jobs / jid[:2] / jid[2:4] / jid.json
+</code></pre>
+</div>
+
+
+                </section>
+                <section id="load">
+                            <input id="load-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">load</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+
+                <label class="view-source-button" for="load-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#load"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load-15"><a href="#load-15"><span class="linenos">15</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="load-16"><a href="#load-16"><span class="linenos">16</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverse of `save`&quot;&quot;&quot;</span>
+</span><span id="load-17"><a href="#load-17"><span class="linenos">17</span></a>    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="load-18"><a href="#load-18"><span class="linenos">18</span></a>    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="load-19"><a href="#load-19"><span class="linenos">19</span></a>    <span class="n">extension</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])</span>
+</span><span id="load-20"><a href="#load-20"><span class="linenos">20</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;qpy&quot;</span><span class="p">:</span>
+</span><span id="load-21"><a href="#load-21"><span class="linenos">21</span></a>        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="load-22"><a href="#load-22"><span class="linenos">22</span></a>            <span class="k">return</span> <span class="n">qpy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="load-23"><a href="#load-23"><span class="linenos">23</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;qpy.gz&quot;</span><span class="p">:</span>
+</span><span id="load-24"><a href="#load-24"><span class="linenos">24</span></a>        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="load-25"><a href="#load-25"><span class="linenos">25</span></a>            <span class="k">return</span> <span class="n">qpy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="load-26"><a href="#load-26"><span class="linenos">26</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;hdf5&quot;</span><span class="p">:</span>
+</span><span id="load-27"><a href="#load-27"><span class="linenos">27</span></a>        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="load-28"><a href="#load-28"><span class="linenos">28</span></a>            <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fp</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+</span><span id="load-29"><a href="#load-29"><span class="linenos">29</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;json&quot;</span><span class="p">:</span>
+</span><span id="load-30"><a href="#load-30"><span class="linenos">30</span></a>        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="load-31"><a href="#load-31"><span class="linenos">31</span></a>            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+</span><span id="load-32"><a href="#load-32"><span class="linenos">32</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;csv&quot;</span><span class="p">:</span>
+</span><span id="load-33"><a href="#load-33"><span class="linenos">33</span></a>        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="load-34"><a href="#load-34"><span class="linenos">34</span></a>    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file extension: </span><span class="si">{</span><span class="n">extension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Inverse of <code><a href="#save">save</a></code></p>
+</div>
+
+
+                </section>
+                <section id="open_hamiltonian_file">
+                            <input id="open_hamiltonian_file-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-contextmanager">@contextmanager</div>
+
+        <span class="def">def</span>
+        <span class="name">open_hamiltonian_file</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n">Generator</span><span class="p">[</span><span class="n">h5py</span><span class="o">.</span><span class="n">_hl</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">NoneType</span><span class="p">,</span> <span class="n">NoneType</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="open_hamiltonian_file-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#open_hamiltonian_file"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="open_hamiltonian_file-58"><a href="#open_hamiltonian_file-58"><span class="linenos">58</span></a><span class="nd">@contextmanager</span>
+</span><span id="open_hamiltonian_file-59"><a href="#open_hamiltonian_file-59"><span class="linenos">59</span></a><span class="k">def</span><span class="w"> </span><span class="nf">open_hamiltonian_file</span><span class="p">(</span>
+</span><span id="open_hamiltonian_file-60"><a href="#open_hamiltonian_file-60"><span class="linenos">60</span></a>    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="open_hamiltonian_file-61"><a href="#open_hamiltonian_file-61"><span class="linenos">61</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="open_hamiltonian_file-62"><a href="#open_hamiltonian_file-62"><span class="linenos">62</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="open_hamiltonian_file-63"><a href="#open_hamiltonian_file-63"><span class="linenos">63</span></a><span class="sd">    A Hamiltonian file is a ZIP archive containing a single HDF5 file, which</span>
+</span><span id="open_hamiltonian_file-64"><a href="#open_hamiltonian_file-64"><span class="linenos">64</span></a><span class="sd">    contains essentially a dict of byte strings, each representing a serialized</span>
+</span><span id="open_hamiltonian_file-65"><a href="#open_hamiltonian_file-65"><span class="linenos">65</span></a><span class="sd">    sparse Pauli operator. The serialization format looks like this (after</span>
+</span><span id="open_hamiltonian_file-66"><a href="#open_hamiltonian_file-66"><span class="linenos">66</span></a><span class="sd">    decoding):</span>
+</span><span id="open_hamiltonian_file-67"><a href="#open_hamiltonian_file-67"><span class="linenos">67</span></a>
+</span><span id="open_hamiltonian_file-68"><a href="#open_hamiltonian_file-68"><span class="linenos">68</span></a><span class="sd">        &gt;&gt;&gt; with open_hamiltonian_file(&quot;...&quot;) as fp:</span>
+</span><span id="open_hamiltonian_file-69"><a href="#open_hamiltonian_file-69"><span class="linenos">69</span></a><span class="sd">        &gt;&gt;&gt;     k = list(fp.keys())[0]</span>
+</span><span id="open_hamiltonian_file-70"><a href="#open_hamiltonian_file-70"><span class="linenos">70</span></a><span class="sd">        &gt;&gt;&gt;     print(fp[k][()].decode(&quot;utf-8&quot;))</span>
+</span><span id="open_hamiltonian_file-71"><a href="#open_hamiltonian_file-71"><span class="linenos">71</span></a><span class="sd">        22.5 [] +</span>
+</span><span id="open_hamiltonian_file-72"><a href="#open_hamiltonian_file-72"><span class="linenos">72</span></a><span class="sd">        -0.5 [Z9 Z20] +</span>
+</span><span id="open_hamiltonian_file-73"><a href="#open_hamiltonian_file-73"><span class="linenos">73</span></a><span class="sd">        -0.5 [Z9 Z26] +</span>
+</span><span id="open_hamiltonian_file-74"><a href="#open_hamiltonian_file-74"><span class="linenos">74</span></a><span class="sd">        -0.5 [Z9 Z29] +</span>
+</span><span id="open_hamiltonian_file-75"><a href="#open_hamiltonian_file-75"><span class="linenos">75</span></a><span class="sd">        -0.5 [Z9 Z56] +</span>
+</span><span id="open_hamiltonian_file-76"><a href="#open_hamiltonian_file-76"><span class="linenos">76</span></a>
+</span><span id="open_hamiltonian_file-77"><a href="#open_hamiltonian_file-77"><span class="linenos">77</span></a><span class="sd">    Warning:</span>
+</span><span id="open_hamiltonian_file-78"><a href="#open_hamiltonian_file-78"><span class="linenos">78</span></a><span class="sd">        Note the `[()]` when accessing a key!</span>
+</span><span id="open_hamiltonian_file-79"><a href="#open_hamiltonian_file-79"><span class="linenos">79</span></a>
+</span><span id="open_hamiltonian_file-80"><a href="#open_hamiltonian_file-80"><span class="linenos">80</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="open_hamiltonian_file-81"><a href="#open_hamiltonian_file-81"><span class="linenos">81</span></a>    <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="open_hamiltonian_file-82"><a href="#open_hamiltonian_file-82"><span class="linenos">82</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+</span><span id="open_hamiltonian_file-83"><a href="#open_hamiltonian_file-83"><span class="linenos">83</span></a>            <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">namelist</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">fp</span><span class="o">.</span><span class="n">namelist</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.hdf5&quot;</span><span class="p">)</span>
+</span><span id="open_hamiltonian_file-84"><a href="#open_hamiltonian_file-84"><span class="linenos">84</span></a>        <span class="p">):</span>
+</span><span id="open_hamiltonian_file-85"><a href="#open_hamiltonian_file-85"><span class="linenos">85</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="open_hamiltonian_file-86"><a href="#open_hamiltonian_file-86"><span class="linenos">86</span></a>                <span class="sa">f</span><span class="s2">&quot;Expected exactly one .hdf5 file in archive </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">, found &quot;</span>
+</span><span id="open_hamiltonian_file-87"><a href="#open_hamiltonian_file-87"><span class="linenos">87</span></a>                <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">namelist</span><span class="p">())</span>
+</span><span id="open_hamiltonian_file-88"><a href="#open_hamiltonian_file-88"><span class="linenos">88</span></a>            <span class="p">)</span>
+</span><span id="open_hamiltonian_file-89"><a href="#open_hamiltonian_file-89"><span class="linenos">89</span></a>        <span class="n">name</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">namelist</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="open_hamiltonian_file-90"><a href="#open_hamiltonian_file-90"><span class="linenos">90</span></a>        <span class="k">with</span> <span class="n">fp</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">h5fp</span><span class="p">:</span>
+</span><span id="open_hamiltonian_file-91"><a href="#open_hamiltonian_file-91"><span class="linenos">91</span></a>            <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">h5fp</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">h5fp</span><span class="p">:</span>
+</span><span id="open_hamiltonian_file-92"><a href="#open_hamiltonian_file-92"><span class="linenos">92</span></a>                <span class="k">yield</span> <span class="n">h5fp</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>A Hamiltonian file is a ZIP archive containing a single HDF5 file, which
+contains essentially a dict of byte strings, each representing a serialized
+sparse Pauli operator. The serialization format looks like this (after
+decoding):</p>
+
+<pre><code>&gt;&gt;&gt; with open_hamiltonian_file("...") as fp:
+&gt;&gt;&gt;     k = list(fp.keys())[0]
+&gt;&gt;&gt;     print(fp[k][()].decode("utf-8"))
+22.5 [] +
+-0.5 [Z9 Z20] +
+-0.5 [Z9 Z26] +
+-0.5 [Z9 Z29] +
+-0.5 [Z9 Z56] +
+</code></pre>
+
+<h6 id="warning">Warning:</h6>
+
+<blockquote>
+  <p>Note the <code>[()]</code> when accessing a key!</p>
+</blockquote>
+</div>
+
+
+                </section>
+                <section id="qaoa">
+                            <input id="qaoa-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">qaoa</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">operator</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">quantum_info</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">symplectic</span><span class="o">.</span><span class="n">sparse_pauli_op</span><span class="o">.</span><span class="n">SparsePauliOp</span>,</span><span class="param">	<span class="n">backend</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">providers</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">BackendV2</span>,</span><span class="param">	<span class="n">estimator</span><span class="p">:</span> <span class="n">qiskit_ibm_runtime</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">EstimatorV2</span> <span class="o">|</span> <span class="n">qiskit_aer</span><span class="o">.</span><span class="n">primitives</span><span class="o">.</span><span class="n">estimator_v2</span><span class="o">.</span><span class="n">EstimatorV2</span>,</span><span class="param">	<span class="n">cost_qc</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">quantumcircuit</span><span class="o">.</span><span class="n">QuantumCircuit</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">n_qaoa_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>,</span><span class="param">	<span class="n">pm_optimization_level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>,</span><span class="param">	<span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>:</span></span>
+
+                <label class="view-source-button" for="qaoa-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#qaoa"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="qaoa-62"><a href="#qaoa-62"><span class="linenos"> 62</span></a><span class="k">def</span><span class="w"> </span><span class="nf">qaoa</span><span class="p">(</span>
+</span><span id="qaoa-63"><a href="#qaoa-63"><span class="linenos"> 63</span></a>    <span class="n">operator</span><span class="p">:</span> <span class="n">SparsePauliOp</span><span class="p">,</span>
+</span><span id="qaoa-64"><a href="#qaoa-64"><span class="linenos"> 64</span></a>    <span class="n">backend</span><span class="p">:</span> <span class="n">Backend</span><span class="p">,</span>
+</span><span id="qaoa-65"><a href="#qaoa-65"><span class="linenos"> 65</span></a>    <span class="n">estimator</span><span class="p">:</span> <span class="n">IBMEstimator</span> <span class="o">|</span> <span class="n">AerEstimator</span><span class="p">,</span>
+</span><span id="qaoa-66"><a href="#qaoa-66"><span class="linenos"> 66</span></a>    <span class="n">cost_qc</span><span class="p">:</span> <span class="n">QuantumCircuit</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="qaoa-67"><a href="#qaoa-67"><span class="linenos"> 67</span></a>    <span class="n">n_qaoa_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="qaoa-68"><a href="#qaoa-68"><span class="linenos"> 68</span></a>    <span class="n">pm_optimization_level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="qaoa-69"><a href="#qaoa-69"><span class="linenos"> 69</span></a>    <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+</span><span id="qaoa-70"><a href="#qaoa-70"><span class="linenos"> 70</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+</span><span id="qaoa-71"><a href="#qaoa-71"><span class="linenos"> 71</span></a>    <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
+</span><span id="qaoa-72"><a href="#qaoa-72"><span class="linenos"> 72</span></a><span class="p">]:</span>
+</span><span id="qaoa-73"><a href="#qaoa-73"><span class="linenos"> 73</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="qaoa-74"><a href="#qaoa-74"><span class="linenos"> 74</span></a><span class="sd">    Runs QAOA on the given operator using the given backend. The Trotterization</span>
+</span><span id="qaoa-75"><a href="#qaoa-75"><span class="linenos"> 75</span></a><span class="sd">    of the cost operator can be given explicitely as a `QuantumCircuit`.</span>
+</span><span id="qaoa-76"><a href="#qaoa-76"><span class="linenos"> 76</span></a><span class="sd">    Otherwise, it is automatically Trotterized.</span>
+</span><span id="qaoa-77"><a href="#qaoa-77"><span class="linenos"> 77</span></a>
+</span><span id="qaoa-78"><a href="#qaoa-78"><span class="linenos"> 78</span></a><span class="sd">    This method submits PUBs in batches, meaning that at every iteration,</span>
+</span><span id="qaoa-79"><a href="#qaoa-79"><span class="linenos"> 79</span></a><span class="sd">    `batch_size` parameters are tested.</span>
+</span><span id="qaoa-80"><a href="#qaoa-80"><span class="linenos"> 80</span></a>
+</span><span id="qaoa-81"><a href="#qaoa-81"><span class="linenos"> 81</span></a><span class="sd">    Warning:</span>
+</span><span id="qaoa-82"><a href="#qaoa-82"><span class="linenos"> 82</span></a><span class="sd">        This method tries to *MAXIMIZE* the energy of the operator. If you want</span>
+</span><span id="qaoa-83"><a href="#qaoa-83"><span class="linenos"> 83</span></a><span class="sd">        to minimize, flip the sign of the weights in `operator`.</span>
+</span><span id="qaoa-84"><a href="#qaoa-84"><span class="linenos"> 84</span></a>
+</span><span id="qaoa-85"><a href="#qaoa-85"><span class="linenos"> 85</span></a><span class="sd">    Args:</span>
+</span><span id="qaoa-86"><a href="#qaoa-86"><span class="linenos"> 86</span></a><span class="sd">        operator (SparsePauliOp): The operator whose energy to maximize</span>
+</span><span id="qaoa-87"><a href="#qaoa-87"><span class="linenos"> 87</span></a><span class="sd">        backend (Backend):</span>
+</span><span id="qaoa-88"><a href="#qaoa-88"><span class="linenos"> 88</span></a><span class="sd">        estimator (IBMEstimator | AerEstimator):</span>
+</span><span id="qaoa-89"><a href="#qaoa-89"><span class="linenos"> 89</span></a><span class="sd">        cost_qc (QuantumCircuit | None, optional):</span>
+</span><span id="qaoa-90"><a href="#qaoa-90"><span class="linenos"> 90</span></a><span class="sd">        n_qaoa_steps (int, optional):</span>
+</span><span id="qaoa-91"><a href="#qaoa-91"><span class="linenos"> 91</span></a><span class="sd">        pm_optimization_level (int, optional):</span>
+</span><span id="qaoa-92"><a href="#qaoa-92"><span class="linenos"> 92</span></a>
+</span><span id="qaoa-93"><a href="#qaoa-93"><span class="linenos"> 93</span></a><span class="sd">    Returns:</span>
+</span><span id="qaoa-94"><a href="#qaoa-94"><span class="linenos"> 94</span></a><span class="sd">        1. A tuple containing the optimal parameters and the optimal energy.</span>
+</span><span id="qaoa-95"><a href="#qaoa-95"><span class="linenos"> 95</span></a><span class="sd">        2. A tuple containing array of all parameters that were tried and the</span>
+</span><span id="qaoa-96"><a href="#qaoa-96"><span class="linenos"> 96</span></a><span class="sd">           array of all resulting energies.</span>
+</span><span id="qaoa-97"><a href="#qaoa-97"><span class="linenos"> 97</span></a><span class="sd">        3. A list of dict decribing the results of each job. An element looks</span>
+</span><span id="qaoa-98"><a href="#qaoa-98"><span class="linenos"> 98</span></a><span class="sd">           like:</span>
+</span><span id="qaoa-99"><a href="#qaoa-99"><span class="linenos"> 99</span></a>
+</span><span id="qaoa-100"><a href="#qaoa-100"><span class="linenos">100</span></a><span class="sd">            {</span>
+</span><span id="qaoa-101"><a href="#qaoa-101"><span class="linenos">101</span></a><span class="sd">                &quot;energy&quot;: 0.006450488764709524,</span>
+</span><span id="qaoa-102"><a href="#qaoa-102"><span class="linenos">102</span></a><span class="sd">                &quot;ibmq_job_id&quot;: &quot;3c94c73c-385b-4e71-8675-e3e1ad76aa4e&quot;,</span>
+</span><span id="qaoa-103"><a href="#qaoa-103"><span class="linenos">103</span></a><span class="sd">                &quot;ibmq_session_id&quot;: &quot;cz4h80039f40008scarg&quot;,</span>
+</span><span id="qaoa-104"><a href="#qaoa-104"><span class="linenos">104</span></a><span class="sd">                &quot;batch&quot;: 3,</span>
+</span><span id="qaoa-105"><a href="#qaoa-105"><span class="linenos">105</span></a><span class="sd">            }</span>
+</span><span id="qaoa-106"><a href="#qaoa-106"><span class="linenos">106</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="qaoa-107"><a href="#qaoa-107"><span class="linenos">107</span></a>    <span class="n">ansatz</span> <span class="o">=</span> <span class="n">QAOAAnsatz</span><span class="p">(</span>
+</span><span id="qaoa-108"><a href="#qaoa-108"><span class="linenos">108</span></a>        <span class="n">cost_operator</span><span class="o">=</span><span class="n">cost_qc</span> <span class="k">if</span> <span class="n">cost_qc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">operator</span><span class="p">,</span>
+</span><span id="qaoa-109"><a href="#qaoa-109"><span class="linenos">109</span></a>        <span class="n">reps</span><span class="o">=</span><span class="n">n_qaoa_steps</span><span class="p">,</span>
+</span><span id="qaoa-110"><a href="#qaoa-110"><span class="linenos">110</span></a>    <span class="p">)</span>
+</span><span id="qaoa-111"><a href="#qaoa-111"><span class="linenos">111</span></a>    <span class="n">pm</span> <span class="o">=</span> <span class="n">generate_preset_pass_manager</span><span class="p">(</span>
+</span><span id="qaoa-112"><a href="#qaoa-112"><span class="linenos">112</span></a>        <span class="n">target</span><span class="o">=</span><span class="n">backend</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">optimization_level</span><span class="o">=</span><span class="n">pm_optimization_level</span>
+</span><span id="qaoa-113"><a href="#qaoa-113"><span class="linenos">113</span></a>    <span class="p">)</span>
+</span><span id="qaoa-114"><a href="#qaoa-114"><span class="linenos">114</span></a>    <span class="n">ansatz_isa</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ansatz</span><span class="p">)</span>
+</span><span id="qaoa-115"><a href="#qaoa-115"><span class="linenos">115</span></a>    <span class="n">operator_isa</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+</span><span id="qaoa-116"><a href="#qaoa-116"><span class="linenos">116</span></a>    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+</span><span id="qaoa-117"><a href="#qaoa-117"><span class="linenos">117</span></a>        <span class="s2">&quot;ISA ansatz depth/size: </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="p">,</span>
+</span><span id="qaoa-118"><a href="#qaoa-118"><span class="linenos">118</span></a>        <span class="n">ansatz_isa</span><span class="o">.</span><span class="n">depth</span><span class="p">(),</span>
+</span><span id="qaoa-119"><a href="#qaoa-119"><span class="linenos">119</span></a>        <span class="n">ansatz_isa</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+</span><span id="qaoa-120"><a href="#qaoa-120"><span class="linenos">120</span></a>    <span class="p">)</span>
+</span><span id="qaoa-121"><a href="#qaoa-121"><span class="linenos">121</span></a>    <span class="n">x0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="qaoa-122"><a href="#qaoa-122"><span class="linenos">122</span></a>        <span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># β&#39;s</span>
+</span><span id="qaoa-123"><a href="#qaoa-123"><span class="linenos">123</span></a>        <span class="o">+</span> <span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># γ&#39;s</span>
+</span><span id="qaoa-124"><a href="#qaoa-124"><span class="linenos">124</span></a>    <span class="p">)</span>
+</span><span id="qaoa-125"><a href="#qaoa-125"><span class="linenos">125</span></a>    <span class="n">bounds</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="qaoa-126"><a href="#qaoa-126"><span class="linenos">126</span></a>        <span class="p">([(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># β&#39;s</span>
+</span><span id="qaoa-127"><a href="#qaoa-127"><span class="linenos">127</span></a>        <span class="o">+</span> <span class="p">([(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># γ&#39;s</span>
+</span><span id="qaoa-128"><a href="#qaoa-128"><span class="linenos">128</span></a>    <span class="p">)</span>
+</span><span id="qaoa-129"><a href="#qaoa-129"><span class="linenos">129</span></a>    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="qaoa-130"><a href="#qaoa-130"><span class="linenos">130</span></a>    <span class="n">minimize</span><span class="p">(</span>
+</span><span id="qaoa-131"><a href="#qaoa-131"><span class="linenos">131</span></a>        <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">_energy</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">),</span>  <span class="c1"># energy maximization</span>
+</span><span id="qaoa-132"><a href="#qaoa-132"><span class="linenos">132</span></a>        <span class="n">x0</span><span class="o">=</span><span class="n">x0</span><span class="p">,</span>
+</span><span id="qaoa-133"><a href="#qaoa-133"><span class="linenos">133</span></a>        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">ansatz_isa</span><span class="p">,</span> <span class="n">operator_isa</span><span class="p">,</span> <span class="n">estimator</span><span class="p">,</span> <span class="n">records</span><span class="p">),</span>
+</span><span id="qaoa-134"><a href="#qaoa-134"><span class="linenos">134</span></a>        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;cobyla&quot;</span><span class="p">,</span>
+</span><span id="qaoa-135"><a href="#qaoa-135"><span class="linenos">135</span></a>        <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+</span><span id="qaoa-136"><a href="#qaoa-136"><span class="linenos">136</span></a>        <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="n">max_iter</span><span class="p">},</span>
+</span><span id="qaoa-137"><a href="#qaoa-137"><span class="linenos">137</span></a>    <span class="p">)</span>
+</span><span id="qaoa-138"><a href="#qaoa-138"><span class="linenos">138</span></a>    <span class="n">all_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">records</span><span class="p">])</span>
+</span><span id="qaoa-139"><a href="#qaoa-139"><span class="linenos">139</span></a>    <span class="n">all_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">e</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">records</span><span class="p">])</span>
+</span><span id="qaoa-140"><a href="#qaoa-140"><span class="linenos">140</span></a>    <span class="n">results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="qaoa-141"><a href="#qaoa-141"><span class="linenos">141</span></a>        <span class="p">{</span><span class="s2">&quot;energy&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="o">**</span><span class="n">m</span><span class="p">}</span>
+</span><span id="qaoa-142"><a href="#qaoa-142"><span class="linenos">142</span></a>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+</span><span id="qaoa-143"><a href="#qaoa-143"><span class="linenos">143</span></a>    <span class="p">]</span>
+</span><span id="qaoa-144"><a href="#qaoa-144"><span class="linenos">144</span></a>    <span class="n">j</span> <span class="o">=</span> <span class="n">all_e</span><span class="o">.</span><span class="n">argmax</span><span class="p">()</span>
+</span><span id="qaoa-145"><a href="#qaoa-145"><span class="linenos">145</span></a>    <span class="k">return</span> <span class="p">(</span><span class="n">all_x</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">all_e</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="p">(</span><span class="n">all_x</span><span class="p">,</span> <span class="n">all_e</span><span class="p">),</span> <span class="n">results</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Runs QAOA on the given operator using the given backend. The Trotterization
+of the cost operator can be given explicitely as a <code>QuantumCircuit</code>.
+Otherwise, it is automatically Trotterized.</p>
+
+<p>This method submits PUBs in batches, meaning that at every iteration,
+<code>batch_size</code> parameters are tested.</p>
+
+<h6 id="warning">Warning:</h6>
+
+<blockquote>
+  <p>This method tries to <em>MAXIMIZE</em> the energy of the operator. If you want
+  to minimize, flip the sign of the weights in <code>operator</code>.</p>
+</blockquote>
+
+<h6 id="arguments">Arguments:</h6>
+
+<ul>
+<li><strong>operator (SparsePauliOp):</strong>  The operator whose energy to maximize</li>
+<li><strong>backend (Backend):</strong> </li>
+<li><strong>estimator (IBMEstimator | AerEstimator):</strong> </li>
+<li><strong>cost_qc (QuantumCircuit | None, optional):</strong> </li>
+<li><strong>n_qaoa_steps (int, optional):</strong> </li>
+<li><strong>pm_optimization_level (int, optional):</strong> </li>
+</ul>
+
+<h6 id="returns">Returns:</h6>
+
+<blockquote>
+  <ol>
+  <li>A tuple containing the optimal parameters and the optimal energy.</li>
+  <li>A tuple containing array of all parameters that were tried and the
+  array of all resulting energies.</li>
+  <li><p>A list of dict decribing the results of each job. An element looks
+  like:</p>
+  
+  <p>{
+       "energy": 0.006450488764709524,
+       "ibmq_job_id": "3c94c73c-385b-4e71-8675-e3e1ad76aa4e",
+       "ibmq_session_id": "cz4h80039f40008scarg",
+       "batch": 3,
+   }</p></li>
+  </ol>
+</blockquote>
+</div>
+
+
+                </section>
+                <section id="reorder_operator">
+                            <input id="reorder_operator-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">reorder_operator</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">operator</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">quantum_info</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">symplectic</span><span class="o">.</span><span class="n">sparse_pauli_op</span><span class="o">.</span><span class="n">SparsePauliOp</span>,</span><span class="param">	<span class="n">term_indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">qiskit</span><span class="o">.</span><span class="n">quantum_info</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">symplectic</span><span class="o">.</span><span class="n">sparse_pauli_op</span><span class="o">.</span><span class="n">SparsePauliOp</span>:</span></span>
+
+                <label class="view-source-button" for="reorder_operator-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#reorder_operator"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="reorder_operator-58"><a href="#reorder_operator-58"><span class="linenos">58</span></a><span class="k">def</span><span class="w"> </span><span class="nf">reorder_operator</span><span class="p">(</span>
+</span><span id="reorder_operator-59"><a href="#reorder_operator-59"><span class="linenos">59</span></a>    <span class="n">operator</span><span class="p">:</span> <span class="n">SparsePauliOp</span><span class="p">,</span> <span class="n">term_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="reorder_operator-60"><a href="#reorder_operator-60"><span class="linenos">60</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SparsePauliOp</span><span class="p">:</span>
+</span><span id="reorder_operator-61"><a href="#reorder_operator-61"><span class="linenos">61</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="reorder_operator-62"><a href="#reorder_operator-62"><span class="linenos">62</span></a><span class="sd">    Changes the order of the terms in the operator given a term index vector,</span>
+</span><span id="reorder_operator-63"><a href="#reorder_operator-63"><span class="linenos">63</span></a><span class="sd">    which is just a permutation of `[0, 1, ..., len(operator) - 1]`.</span>
+</span><span id="reorder_operator-64"><a href="#reorder_operator-64"><span class="linenos">64</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="reorder_operator-65"><a href="#reorder_operator-65"><span class="linenos">65</span></a>    <span class="n">terms</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">to_sparse_list</span><span class="p">()</span>
+</span><span id="reorder_operator-66"><a href="#reorder_operator-66"><span class="linenos">66</span></a>    <span class="k">return</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_sparse_list</span><span class="p">(</span>
+</span><span id="reorder_operator-67"><a href="#reorder_operator-67"><span class="linenos">67</span></a>        <span class="p">[</span><span class="n">terms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">term_indices</span><span class="p">],</span> <span class="n">num_qubits</span><span class="o">=</span><span class="n">operator</span><span class="o">.</span><span class="n">num_qubits</span>
+</span><span id="reorder_operator-68"><a href="#reorder_operator-68"><span class="linenos">68</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Changes the order of the terms in the operator given a term index vector,
+which is just a permutation of <code>[0, 1, ..., len(operator) - 1]</code>.</p>
+</div>
+
+
+                </section>
+                <section id="reorder">
+                            <input id="reorder-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">reorder</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">gate</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">pauli_evolution</span><span class="o">.</span><span class="n">PauliEvolutionGate</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;degree_c&#39;</span><span class="p">,</span> <span class="s1">&#39;degree&#39;</span><span class="p">,</span> <span class="s1">&#39;misra_gries&#39;</span><span class="p">,</span> <span class="s1">&#39;saturation&#39;</span><span class="p">,</span> <span class="s1">&#39;simplicial&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">pauli_evolution</span><span class="o">.</span><span class="n">PauliEvolutionGate</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="reorder-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#reorder"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="reorder-27"><a href="#reorder-27"><span class="linenos">27</span></a><span class="k">def</span><span class="w"> </span><span class="nf">reorder</span><span class="p">(</span>
+</span><span id="reorder-28"><a href="#reorder-28"><span class="linenos">28</span></a>    <span class="n">gate</span><span class="p">:</span> <span class="n">PauliEvolutionGate</span><span class="p">,</span>
+</span><span id="reorder-29"><a href="#reorder-29"><span class="linenos">29</span></a>    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+</span><span id="reorder-30"><a href="#reorder-30"><span class="linenos">30</span></a>        <span class="s2">&quot;degree_c&quot;</span><span class="p">,</span>
+</span><span id="reorder-31"><a href="#reorder-31"><span class="linenos">31</span></a>        <span class="s2">&quot;degree&quot;</span><span class="p">,</span>
+</span><span id="reorder-32"><a href="#reorder-32"><span class="linenos">32</span></a>        <span class="s2">&quot;misra_gries&quot;</span><span class="p">,</span>
+</span><span id="reorder-33"><a href="#reorder-33"><span class="linenos">33</span></a>        <span class="s2">&quot;saturation&quot;</span><span class="p">,</span>
+</span><span id="reorder-34"><a href="#reorder-34"><span class="linenos">34</span></a>        <span class="s2">&quot;simplicial&quot;</span><span class="p">,</span>
+</span><span id="reorder-35"><a href="#reorder-35"><span class="linenos">35</span></a>    <span class="p">],</span>
+</span><span id="reorder-36"><a href="#reorder-36"><span class="linenos">36</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">PauliEvolutionGate</span><span class="p">,</span> <span class="n">Coloring</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+</span><span id="reorder-37"><a href="#reorder-37"><span class="linenos">37</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="reorder-38"><a href="#reorder-38"><span class="linenos">38</span></a><span class="sd">    Applies Pauli coloring to reorder the Pauli terms in the underlying operator</span>
+</span><span id="reorder-39"><a href="#reorder-39"><span class="linenos">39</span></a><span class="sd">    of the gate.</span>
+</span><span id="reorder-40"><a href="#reorder-40"><span class="linenos">40</span></a>
+</span><span id="reorder-41"><a href="#reorder-41"><span class="linenos">41</span></a><span class="sd">    The supported coloring methods are:</span>
+</span><span id="reorder-42"><a href="#reorder-42"><span class="linenos">42</span></a><span class="sd">    * `degree_c`: C implementation of the `degree` method</span>
+</span><span id="reorder-43"><a href="#reorder-43"><span class="linenos">43</span></a><span class="sd">    * `degree`</span>
+</span><span id="reorder-44"><a href="#reorder-44"><span class="linenos">44</span></a><span class="sd">    * `misra_gries`: **Only for Ising or transverse-Ising Hamiltonians**</span>
+</span><span id="reorder-45"><a href="#reorder-45"><span class="linenos">45</span></a><span class="sd">    * `saturation`</span>
+</span><span id="reorder-46"><a href="#reorder-46"><span class="linenos">46</span></a><span class="sd">    * `simplicial`: **Only for 3SAT Hamiltonians**</span>
+</span><span id="reorder-47"><a href="#reorder-47"><span class="linenos">47</span></a>
+</span><span id="reorder-48"><a href="#reorder-48"><span class="linenos">48</span></a><span class="sd">    Returns the reordered gate and the coloring, which is a `dict[int,</span>
+</span><span id="reorder-49"><a href="#reorder-49"><span class="linenos">49</span></a><span class="sd">    set[int]]` that maps a color to the let of all term (indices) with that</span>
+</span><span id="reorder-50"><a href="#reorder-50"><span class="linenos">50</span></a><span class="sd">    color.</span>
+</span><span id="reorder-51"><a href="#reorder-51"><span class="linenos">51</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="reorder-52"><a href="#reorder-52"><span class="linenos">52</span></a>    <span class="n">methods</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+</span><span id="reorder-53"><a href="#reorder-53"><span class="linenos">53</span></a>        <span class="nb">str</span><span class="p">,</span>
+</span><span id="reorder-54"><a href="#reorder-54"><span class="linenos">54</span></a>        <span class="n">Callable</span><span class="p">[</span>
+</span><span id="reorder-55"><a href="#reorder-55"><span class="linenos">55</span></a>            <span class="p">[</span><span class="n">PauliEvolutionGate</span><span class="p">],</span>
+</span><span id="reorder-56"><a href="#reorder-56"><span class="linenos">56</span></a>            <span class="nb">tuple</span><span class="p">[</span><span class="n">PauliEvolutionGate</span><span class="p">,</span> <span class="n">Coloring</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+</span><span id="reorder-57"><a href="#reorder-57"><span class="linenos">57</span></a>        <span class="p">],</span>
+</span><span id="reorder-58"><a href="#reorder-58"><span class="linenos">58</span></a>    <span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="reorder-59"><a href="#reorder-59"><span class="linenos">59</span></a>        <span class="s2">&quot;degree_c&quot;</span><span class="p">:</span> <span class="n">degree_reordering_c</span><span class="p">,</span>
+</span><span id="reorder-60"><a href="#reorder-60"><span class="linenos">60</span></a>        <span class="s2">&quot;degree&quot;</span><span class="p">:</span> <span class="n">degree_reordering</span><span class="p">,</span>
+</span><span id="reorder-61"><a href="#reorder-61"><span class="linenos">61</span></a>        <span class="s2">&quot;misra_gries&quot;</span><span class="p">:</span> <span class="n">misra_gries_reordering</span><span class="p">,</span>
+</span><span id="reorder-62"><a href="#reorder-62"><span class="linenos">62</span></a>        <span class="s2">&quot;saturation&quot;</span><span class="p">:</span> <span class="n">saturation_reordering</span><span class="p">,</span>
+</span><span id="reorder-63"><a href="#reorder-63"><span class="linenos">63</span></a>        <span class="s2">&quot;simplicial&quot;</span><span class="p">:</span> <span class="n">simplicial_reordering</span><span class="p">,</span>
+</span><span id="reorder-64"><a href="#reorder-64"><span class="linenos">64</span></a>    <span class="p">}</span>
+</span><span id="reorder-65"><a href="#reorder-65"><span class="linenos">65</span></a>    <span class="k">return</span> <span class="n">methods</span><span class="p">[</span><span class="n">method</span><span class="p">](</span><span class="n">gate</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Applies Pauli coloring to reorder the Pauli terms in the underlying operator
+of the gate.</p>
+
+<p>The supported coloring methods are:</p>
+
+<ul>
+<li><code>degree_c</code>: C implementation of the <code>degree</code> method</li>
+<li><code>degree</code></li>
+<li><code>misra_gries</code>: <strong>Only for Ising or transverse-Ising Hamiltonians</strong></li>
+<li><code>saturation</code></li>
+<li><code>simplicial</code>: <strong>Only for 3SAT Hamiltonians</strong></li>
+</ul>
+
+<p>Returns the reordered gate and the coloring, which is a <code>dict[int,
+set[int]]</code> that maps a color to the let of all term (indices) with that
+color.</p>
+</div>
+
+
+                </section>
+                <section id="save">
+                            <input id="save-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">save</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="save-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#save"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="save-37"><a href="#save-37"><span class="linenos">37</span></a><span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="save-38"><a href="#save-38"><span class="linenos">38</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="save-39"><a href="#save-39"><span class="linenos">39</span></a><span class="sd">    Saves an object following the file extension:</span>
+</span><span id="save-40"><a href="#save-40"><span class="linenos">40</span></a><span class="sd">    - `.qpy`: `QuantumCircuit`</span>
+</span><span id="save-41"><a href="#save-41"><span class="linenos">41</span></a><span class="sd">    - `.qpy.gz`: `QuantumCircuit`</span>
+</span><span id="save-42"><a href="#save-42"><span class="linenos">42</span></a><span class="sd">    - `.hdf5`: `dict[np.ndarray]`</span>
+</span><span id="save-43"><a href="#save-43"><span class="linenos">43</span></a><span class="sd">    - `.json`</span>
+</span><span id="save-44"><a href="#save-44"><span class="linenos">44</span></a><span class="sd">    - `.csv`: `pd.DataFrame`</span>
+</span><span id="save-45"><a href="#save-45"><span class="linenos">45</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="save-46"><a href="#save-46"><span class="linenos">46</span></a>    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="save-47"><a href="#save-47"><span class="linenos">47</span></a>    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="save-48"><a href="#save-48"><span class="linenos">48</span></a>    <span class="n">extension</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])</span>
+</span><span id="save-49"><a href="#save-49"><span class="linenos">49</span></a>    <span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;qpy&quot;</span><span class="p">:</span>
+</span><span id="save-50"><a href="#save-50"><span class="linenos">50</span></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">QuantumCircuit</span><span class="p">)</span>
+</span><span id="save-51"><a href="#save-51"><span class="linenos">51</span></a>        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="save-52"><a href="#save-52"><span class="linenos">52</span></a>            <span class="n">qpy</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
+</span><span id="save-53"><a href="#save-53"><span class="linenos">53</span></a>    <span class="k">elif</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;qpy.gz&quot;</span><span class="p">:</span>
+</span><span id="save-54"><a href="#save-54"><span class="linenos">54</span></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">QuantumCircuit</span><span class="p">)</span>
+</span><span id="save-55"><a href="#save-55"><span class="linenos">55</span></a>        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="save-56"><a href="#save-56"><span class="linenos">56</span></a>            <span class="n">qpy</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
+</span><span id="save-57"><a href="#save-57"><span class="linenos">57</span></a>    <span class="k">elif</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;hdf5&quot;</span><span class="p">:</span>
+</span><span id="save-58"><a href="#save-58"><span class="linenos">58</span></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+</span><span id="save-59"><a href="#save-59"><span class="linenos">59</span></a>        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span><span id="save-60"><a href="#save-60"><span class="linenos">60</span></a>        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="save-61"><a href="#save-61"><span class="linenos">61</span></a>            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="save-62"><a href="#save-62"><span class="linenos">62</span></a>                <span class="n">fp</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span>
+</span><span id="save-63"><a href="#save-63"><span class="linenos">63</span></a>                    <span class="n">k</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">,</span> <span class="n">compression_opts</span><span class="o">=</span><span class="mi">9</span>
+</span><span id="save-64"><a href="#save-64"><span class="linenos">64</span></a>                <span class="p">)</span>
+</span><span id="save-65"><a href="#save-65"><span class="linenos">65</span></a>    <span class="k">elif</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;json&quot;</span><span class="p">:</span>
+</span><span id="save-66"><a href="#save-66"><span class="linenos">66</span></a>        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+</span><span id="save-67"><a href="#save-67"><span class="linenos">67</span></a>            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
+</span><span id="save-68"><a href="#save-68"><span class="linenos">68</span></a>    <span class="k">elif</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;csv&quot;</span><span class="p">:</span>
+</span><span id="save-69"><a href="#save-69"><span class="linenos">69</span></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+</span><span id="save-70"><a href="#save-70"><span class="linenos">70</span></a>        <span class="n">obj</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="save-71"><a href="#save-71"><span class="linenos">71</span></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="save-72"><a href="#save-72"><span class="linenos">72</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file extension: </span><span class="si">{</span><span class="n">extension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Saves an object following the file extension:</p>
+
+<ul>
+<li><code>.qpy</code>: <code>QuantumCircuit</code></li>
+<li><code>.qpy.gz</code>: <code>QuantumCircuit</code></li>
+<li><code>.hdf5</code>: <code>dict[np.ndarray]</code></li>
+<li><code>.json</code></li>
+<li><code>.csv</code>: <code>pd.DataFrame</code></li>
+</ul>
+</div>
+
+
+                </section>
+                <section id="to_evolution_gate">
+                            <input id="to_evolution_gate-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">to_evolution_gate</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">h</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">global_phase</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">complex128</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">pauli_evolution</span><span class="o">.</span><span class="n">PauliEvolutionGate</span>:</span></span>
+
+                <label class="view-source-button" for="to_evolution_gate-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#to_evolution_gate"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="to_evolution_gate-15"><a href="#to_evolution_gate-15"><span class="linenos">15</span></a><span class="k">def</span><span class="w"> </span><span class="nf">to_evolution_gate</span><span class="p">(</span>
+</span><span id="to_evolution_gate-16"><a href="#to_evolution_gate-16"><span class="linenos">16</span></a>    <span class="n">h</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="to_evolution_gate-17"><a href="#to_evolution_gate-17"><span class="linenos">17</span></a>    <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="to_evolution_gate-18"><a href="#to_evolution_gate-18"><span class="linenos">18</span></a>    <span class="n">global_phase</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">complex128</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="to_evolution_gate-19"><a href="#to_evolution_gate-19"><span class="linenos">19</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PauliEvolutionGate</span><span class="p">:</span>
+</span><span id="to_evolution_gate-20"><a href="#to_evolution_gate-20"><span class="linenos">20</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="to_evolution_gate-21"><a href="#to_evolution_gate-21"><span class="linenos">21</span></a><span class="sd">    Converts a serialized sparse Pauli operator (in the format explained</span>
+</span><span id="to_evolution_gate-22"><a href="#to_evolution_gate-22"><span class="linenos">22</span></a><span class="sd">    `hamlib.open_hamiltonian`) to a qiskit</span>
+</span><span id="to_evolution_gate-23"><a href="#to_evolution_gate-23"><span class="linenos">23</span></a><span class="sd">    [`PauliEvolutionGate`](https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PauliEvolutionGate)</span>
+</span><span id="to_evolution_gate-24"><a href="#to_evolution_gate-24"><span class="linenos">24</span></a><span class="sd">    object.</span>
+</span><span id="to_evolution_gate-25"><a href="#to_evolution_gate-25"><span class="linenos">25</span></a>
+</span><span id="to_evolution_gate-26"><a href="#to_evolution_gate-26"><span class="linenos">26</span></a><span class="sd">    The underlying</span>
+</span><span id="to_evolution_gate-27"><a href="#to_evolution_gate-27"><span class="linenos">27</span></a><span class="sd">    [`SparsePauliOp`](https://docs.quantum.ibm.com/api/qiskit/qiskit.quantum_info.SparsePauliOp)</span>
+</span><span id="to_evolution_gate-28"><a href="#to_evolution_gate-28"><span class="linenos">28</span></a><span class="sd">    object can be retrived with `PauliEvolutionGate.operator`. The time</span>
+</span><span id="to_evolution_gate-29"><a href="#to_evolution_gate-29"><span class="linenos">29</span></a><span class="sd">    parameter is an abstract unbound parameter called `δt`.</span>
+</span><span id="to_evolution_gate-30"><a href="#to_evolution_gate-30"><span class="linenos">30</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="to_evolution_gate-31"><a href="#to_evolution_gate-31"><span class="linenos">31</span></a>
+</span><span id="to_evolution_gate-32"><a href="#to_evolution_gate-32"><span class="linenos">32</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_m2t</span><span class="p">(</span><span class="n">w_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">p_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">]:</span>
+</span><span id="to_evolution_gate-33"><a href="#to_evolution_gate-33"><span class="linenos">33</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="to_evolution_gate-34"><a href="#to_evolution_gate-34"><span class="linenos">34</span></a><span class="sd">        Example: `&quot;Z66 X81&quot;` becomes `(&quot;ZX&quot;, [66, 81], 1.0)`.</span>
+</span><span id="to_evolution_gate-35"><a href="#to_evolution_gate-35"><span class="linenos">35</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="to_evolution_gate-36"><a href="#to_evolution_gate-36"><span class="linenos">36</span></a>        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">(</span><span class="n">w_str</span> <span class="k">if</span> <span class="n">w_str</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">)</span>
+</span><span id="to_evolution_gate-37"><a href="#to_evolution_gate-37"><span class="linenos">37</span></a>        <span class="k">if</span> <span class="n">global_phase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="to_evolution_gate-38"><a href="#to_evolution_gate-38"><span class="linenos">38</span></a>            <span class="n">w</span> <span class="o">*=</span> <span class="n">global_phase</span>
+</span><span id="to_evolution_gate-39"><a href="#to_evolution_gate-39"><span class="linenos">39</span></a>        <span class="k">return</span> <span class="p">(</span>
+</span><span id="to_evolution_gate-40"><a href="#to_evolution_gate-40"><span class="linenos">40</span></a>            <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[IXYZ]&quot;</span><span class="p">,</span> <span class="n">p_str</span><span class="p">)),</span>
+</span><span id="to_evolution_gate-41"><a href="#to_evolution_gate-41"><span class="linenos">41</span></a>            <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">p_str</span><span class="p">)],</span>
+</span><span id="to_evolution_gate-42"><a href="#to_evolution_gate-42"><span class="linenos">42</span></a>            <span class="n">w</span><span class="p">,</span>
+</span><span id="to_evolution_gate-43"><a href="#to_evolution_gate-43"><span class="linenos">43</span></a>        <span class="p">)</span>
+</span><span id="to_evolution_gate-44"><a href="#to_evolution_gate-44"><span class="linenos">44</span></a>
+</span><span id="to_evolution_gate-45"><a href="#to_evolution_gate-45"><span class="linenos">45</span></a>    <span class="n">h</span> <span class="o">=</span> <span class="n">h</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">h</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+</span><span id="to_evolution_gate-46"><a href="#to_evolution_gate-46"><span class="linenos">46</span></a>    <span class="n">matches</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(\(?[+-.\dj][^\s]*) \[([^\]]+)\]&quot;</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span><span id="to_evolution_gate-47"><a href="#to_evolution_gate-47"><span class="linenos">47</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">matches</span><span class="p">:</span>
+</span><span id="to_evolution_gate-48"><a href="#to_evolution_gate-48"><span class="linenos">48</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No terms found in Hamiltonian: &quot;</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span>
+</span><span id="to_evolution_gate-49"><a href="#to_evolution_gate-49"><span class="linenos">49</span></a>    <span class="n">terms</span> <span class="o">=</span> <span class="p">[</span><span class="n">_m2t</span><span class="p">(</span><span class="o">*</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">]</span>
+</span><span id="to_evolution_gate-50"><a href="#to_evolution_gate-50"><span class="linenos">50</span></a>    <span class="k">if</span> <span class="n">shuffle</span><span class="p">:</span>
+</span><span id="to_evolution_gate-51"><a href="#to_evolution_gate-51"><span class="linenos">51</span></a>        <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+</span><span id="to_evolution_gate-52"><a href="#to_evolution_gate-52"><span class="linenos">52</span></a>    <span class="n">n_qubits</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">terms</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span id="to_evolution_gate-53"><a href="#to_evolution_gate-53"><span class="linenos">53</span></a>    <span class="n">operator</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_sparse_list</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">n_qubits</span><span class="p">)</span>
+</span><span id="to_evolution_gate-54"><a href="#to_evolution_gate-54"><span class="linenos">54</span></a>    <span class="n">dt</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="s2">&quot;δt&quot;</span><span class="p">)</span>
+</span><span id="to_evolution_gate-55"><a href="#to_evolution_gate-55"><span class="linenos">55</span></a>    <span class="k">return</span> <span class="n">PauliEvolutionGate</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Converts a serialized sparse Pauli operator (in the format explained
+<code>hamlib.open_hamiltonian</code>) to a qiskit
+<a href="https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PauliEvolutionGate"><code>PauliEvolutionGate</code></a>
+object.</p>
+
+<p>The underlying
+<a href="https://docs.quantum.ibm.com/api/qiskit/qiskit.quantum_info.SparsePauliOp"><code>SparsePauliOp</code></a>
+object can be retrived with <code>PauliEvolutionGate.operator</code>. The time
+parameter is an abstract unbound parameter called <code>δt</code>.</p>
+</div>
+
+
+                </section>
+                <section id="trim_qc">
+                            <input id="trim_qc-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">trim_qc</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">qc</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">quantumcircuit</span><span class="o">.</span><span class="n">QuantumCircuit</span>,</span><span class="param">	<span class="n">op</span><span class="p">:</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">quantum_info</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">symplectic</span><span class="o">.</span><span class="n">sparse_pauli_op</span><span class="o">.</span><span class="n">SparsePauliOp</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">qiskit</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">quantumcircuit</span><span class="o">.</span><span class="n">QuantumCircuit</span><span class="p">,</span> <span class="n">qiskit</span><span class="o">.</span><span class="n">quantum_info</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">symplectic</span><span class="o">.</span><span class="n">sparse_pauli_op</span><span class="o">.</span><span class="n">SparsePauliOp</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="trim_qc-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#trim_qc"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="trim_qc-81"><a href="#trim_qc-81"><span class="linenos"> 81</span></a><span class="k">def</span><span class="w"> </span><span class="nf">trim_qc</span><span class="p">(</span>
+</span><span id="trim_qc-82"><a href="#trim_qc-82"><span class="linenos"> 82</span></a>    <span class="n">qc</span><span class="p">:</span> <span class="n">QuantumCircuit</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="n">SparsePauliOp</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="trim_qc-83"><a href="#trim_qc-83"><span class="linenos"> 83</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantumCircuit</span><span class="p">,</span> <span class="n">SparsePauliOp</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="trim_qc-84"><a href="#trim_qc-84"><span class="linenos"> 84</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="trim_qc-85"><a href="#trim_qc-85"><span class="linenos"> 85</span></a><span class="sd">    Removes all idle qubits in a QuantumCircuit. If `op` is provided, also</span>
+</span><span id="trim_qc-86"><a href="#trim_qc-86"><span class="linenos"> 86</span></a><span class="sd">    removes the same qubits from the operator.</span>
+</span><span id="trim_qc-87"><a href="#trim_qc-87"><span class="linenos"> 87</span></a>
+</span><span id="trim_qc-88"><a href="#trim_qc-88"><span class="linenos"> 88</span></a><span class="sd">    Warning:</span>
+</span><span id="trim_qc-89"><a href="#trim_qc-89"><span class="linenos"> 89</span></a><span class="sd">        Does not remove final measurements. So if this circuit has a final</span>
+</span><span id="trim_qc-90"><a href="#trim_qc-90"><span class="linenos"> 90</span></a><span class="sd">        complete measurement, this method cannot do anything.</span>
+</span><span id="trim_qc-91"><a href="#trim_qc-91"><span class="linenos"> 91</span></a>
+</span><span id="trim_qc-92"><a href="#trim_qc-92"><span class="linenos"> 92</span></a><span class="sd">    See also:</span>
+</span><span id="trim_qc-93"><a href="#trim_qc-93"><span class="linenos"> 93</span></a><span class="sd">        https://quantumcomputing.stackexchange.com/questions/25672/remove-inactive-qubits-from-qiskit-circuit/37192#37192</span>
+</span><span id="trim_qc-94"><a href="#trim_qc-94"><span class="linenos"> 94</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="trim_qc-95"><a href="#trim_qc-95"><span class="linenos"> 95</span></a>    <span class="n">index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">qc</span><span class="o">.</span><span class="n">qubits</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">qc</span><span class="o">.</span><span class="n">qubits</span><span class="p">))))</span>
+</span><span id="trim_qc-96"><a href="#trim_qc-96"><span class="linenos"> 96</span></a>    <span class="n">used</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="trim_qc-97"><a href="#trim_qc-97"><span class="linenos"> 97</span></a>    <span class="k">for</span> <span class="n">gate</span> <span class="ow">in</span> <span class="n">qc</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="trim_qc-98"><a href="#trim_qc-98"><span class="linenos"> 98</span></a>        <span class="n">used</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">index</span><span class="p">[</span><span class="n">qubit</span><span class="p">]</span> <span class="k">for</span> <span class="n">qubit</span> <span class="ow">in</span> <span class="n">gate</span><span class="o">.</span><span class="n">qubits</span><span class="p">])</span>
+</span><span id="trim_qc-99"><a href="#trim_qc-99"><span class="linenos"> 99</span></a>    <span class="n">used</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">used</span><span class="p">))</span>
+</span><span id="trim_qc-100"><a href="#trim_qc-100"><span class="linenos">100</span></a>    <span class="n">qc</span> <span class="o">=</span> <span class="n">QuantumCircuit</span><span class="o">.</span><span class="n">from_instructions</span><span class="p">(</span><span class="n">qc</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</span><span id="trim_qc-101"><a href="#trim_qc-101"><span class="linenos">101</span></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">SparsePauliOp</span><span class="p">):</span>
+</span><span id="trim_qc-102"><a href="#trim_qc-102"><span class="linenos">102</span></a>        <span class="n">op</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span>
+</span><span id="trim_qc-103"><a href="#trim_qc-103"><span class="linenos">103</span></a>            <span class="p">[</span>
+</span><span id="trim_qc-104"><a href="#trim_qc-104"><span class="linenos">104</span></a>                <span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">used</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">w</span><span class="p">)</span>
+</span><span id="trim_qc-105"><a href="#trim_qc-105"><span class="linenos">105</span></a>                <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">op</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+</span><span id="trim_qc-106"><a href="#trim_qc-106"><span class="linenos">106</span></a>            <span class="p">],</span>
+</span><span id="trim_qc-107"><a href="#trim_qc-107"><span class="linenos">107</span></a>            <span class="n">num_qubits</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">used</span><span class="p">),</span>
+</span><span id="trim_qc-108"><a href="#trim_qc-108"><span class="linenos">108</span></a>        <span class="p">)</span>
+</span><span id="trim_qc-109"><a href="#trim_qc-109"><span class="linenos">109</span></a>    <span class="k">return</span> <span class="n">qc</span><span class="p">,</span> <span class="n">op</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Removes all idle qubits in a QuantumCircuit. If <code>op</code> is provided, also
+removes the same qubits from the operator.</p>
+
+<h6 id="warning">Warning:</h6>
+
+<blockquote>
+  <p>Does not remove final measurements. So if this circuit has a final
+  complete measurement, this method cannot do anything.</p>
+</blockquote>
+
+<h6 id="see-also">See also:</h6>
+
+<blockquote>
+  <p><a href="https://quantumcomputing.stackexchange.com/questions/25672/remove-inactive-qubits-from-qiskit-circuit/37192#37192">https://quantumcomputing.stackexchange.com/questions/25672/remove-inactive-qubits-from-qiskit-circuit/37192#37192</a></p>
+</blockquote>
+</div>
+
+
+                </section>
     </main>
 <script>
     function escapeHTML(html) {
