@@ -21,7 +21,7 @@ if __name__ == "__main__":
         "`trotterization` = 'suzuki_trotter'",
         "`n_timesteps` = 1",
         "`order` = 4",
-        "`n_qubits` <= 64",
+        # "`n_qubits` <= 64",
         "`n_terms` <= 16",
     ]
     QUERY = "SELECT * FROM `results` WHERE " + " AND ".join(clauses)
@@ -34,12 +34,16 @@ if __name__ == "__main__":
 
     logging.debug("Basic processing")
     df.dropna(inplace=True)
+
+    # Add the time column
     df["time"] = df["reordering_time"] + df["synthesis_time"]
     df.drop(
         ["reordering_time", "synthesis_time", "order", "n_timesteps"],
         axis=1,
         inplace=True,
     )
+
+    # Coerce some columns to integers
     df = df.astype({"n_terms": int, "depth": int, "n_qubits": int})
 
     # Keep only one row per (hid, method) tuple (the shallowest one)
@@ -81,7 +85,7 @@ if __name__ == "__main__":
         ham_dir="out/ham",
         reorder_result=df,
         reorder_result_dir="out/reorder.hcs=m",
-        output_dir="out/sim.hm=p,hc=m,max",
+        output_dir="out/run.aer.hm=p,hc=m,max",
         n_trials=1,
         n_jobs=8,
         mode="aer",

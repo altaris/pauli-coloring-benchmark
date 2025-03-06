@@ -41,7 +41,7 @@ class EarlyStoppingLoop(Iterable[int]):
     delta: float
     mode: Literal["min", "max"]
 
-    _best_score: float = float("inf")
+    _best_score: float
     _best_solution: Any = None
     _iteration: int = 0
     _sli: int = 0  # Nb of iterations since last improvement
@@ -64,7 +64,10 @@ class EarlyStoppingLoop(Iterable[int]):
         self.mode = mode
 
     def __iter__(self) -> Iterator:
-        self._best_solution, self._best_score = None, float("inf")
+        self._best_solution = None
+        self._best_score = (
+            float("inf") if self.mode == "min" else float("-inf")
+        )
         self._iteration, self._sli = 0, 0
         return self
 

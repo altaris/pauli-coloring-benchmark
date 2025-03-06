@@ -46,6 +46,9 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
                 )
         except Exception as e:
             logging.error("Error reading {}: {}", file, e)
+    if not rows:
+        logging.warning("No valid JSON files found in {}", jobs_dir)
+        return pd.DataFrame()
     results = pd.DataFrame(rows)
     results.set_index("hid", inplace=True)
     logging.info(

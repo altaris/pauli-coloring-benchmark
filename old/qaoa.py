@@ -11,16 +11,16 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_aer.primitives import EstimatorV2 as AerEstimator
 from qiskit_ibm_runtime import EstimatorV2 as IBMEstimator
 from qiskit_ibm_runtime import RuntimeJobV2 as IBMRuntimeJob
-from scipy.optimize import minimize
+
+from pcb.utils import EarlyStoppingLoop
 
 
-def _energy(
-    x: np.ndarray,
+def _cost_function(
+    parameters: np.ndarray,
     ansatz: QuantumCircuit,
     operator: SparsePauliOp,
     estimator: IBMEstimator | AerEstimator,
-    records: list[tuple[np.ndarray, float, dict]] | None = None,
-) -> float:
+) -> tuple[np.ndarray, dict]:
     """
     Evaluates a set of parameters for the QAOA ansatz. Returns an array of all
     resulting energies and a dictionary containing data about the job submitted
@@ -31,27 +31,19 @@ def _energy(
         ansatz (QuantumCircuit):
         operator (SparsePauliOp):
         estimator (IBMEstimator | AerEstimator):
-        records (list, optional): If provided, results of this evaluation will
-            be appended.
     """
-    if x.ndim != 1:
+    if parameters.ndim != 2:
         raise ValueError(
-            f"Parameters must be a 1D array, got shape: {x.shape}"
+            f"Parameters must be a 2D array, got shape: {parameters.shape}"
         )
-    pubs = [(ansatz, [operator], [x])]
+    pubs = [(ansatz, [operator], [x]) for x in parameters]
     job = estimator.run(pubs=pubs)
     results = job.result()
-    e = float(results[0].data.evs[0])
-    if records is not None:
-        records.append((x, e, _job_to_dict(job)))
-    return e
+    es = np.array([r.data.evs[0] for r in results])
+    return es, _job_to_dict(job)
 
 
 def _job_to_dict(job: IBMRuntimeJob | PrimitiveJob) -> dict:
-    """
-    Note:
-        The keys will be prefixed with `ibmq_` even if the job is an Aer job.
-    """
     return {
         "ibmq_jid": job.job_id(),
         "ibmq_sid": getattr(job, "session_id", None),
@@ -65,7 +57,9 @@ def qaoa(
     cost_qc: QuantumCircuit | None = None,
     n_qaoa_steps: int = 2,
     pm_optimization_level: int = 3,
-    max_iter: int = 128,
+    batch_size: int = 16,
+    max_n_batches: int = 10,
+    patience: int = 3,
 ) -> tuple[
     tuple[np.ndarray, float], tuple[np.ndarray, np.ndarray], list[dict]
 ]:
@@ -88,6 +82,8 @@ def qaoa(
         cost_qc (QuantumCircuit | None, optional):
         n_qaoa_steps (int, optional):
         pm_optimization_level (int, optional):
+        batch_size (int, optional):
+        max_n_batches (int, optional):
 
     Returns:
         1. A tuple containing the optimal parameters and the optimal energy.
@@ -117,28 +113,36 @@ def qaoa(
         ansatz_isa.depth(),
         ansatz_isa.size(),
     )
-    x0 = np.array(
-        ([np.pi / 2] * (len(ansatz_isa.parameters) // 2))  # β's
-        + ([np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+
+    parametrization = ng.p.Array(
+        shape=(len(ansatz_isa.parameters),),
+        lower=0,
+        upper=np.array(
+            ([np.pi] * (len(ansatz_isa.parameters) // 2))  # β's
+            + ([2 * np.pi] * (len(ansatz_isa.parameters) // 2))  # γ's
+        ),
     )
-    bounds = (
-        ([(0, np.pi)] * (len(ansatz_isa.parameters) // 2))  # β's
-        + ([(0, 2 * np.pi)] * (len(ansatz_isa.parameters) // 2))  # γ's
+    optimizer = ng.optimizers.NGOpt(
+        parametrization=parametrization,
+        budget=max_n_batches * batch_size,
+        num_workers=batch_size,  # to make batch_size asks concurrently
     )
-    records: list[tuple[np.ndarray, float, dict]] = []
-    minimize(
-        lambda *args: -1 * _energy(*args),  # energy maximization
-        x0=x0,
-        args=(ansatz_isa, operator_isa, estimator, records),
-        method="cobyla",
-        bounds=bounds,
-        options={"maxiter": max_iter},
+
+    loop = EarlyStoppingLoop(
+        max_iter=max_n_batches, patience=patience, delta=1e-2, mode="max"
     )
-    all_x = np.stack([x for x, _, _ in records])
-    all_e = np.array([e for _, e, _ in records])
-    results = [
-        {"energy": float(e), "step": i, **m}
-        for i, (_, e, m) in enumerate(records)
-    ]
+    records: list[tuple[np.ndarray, np.float64, dict, int]] = []
+    for i in loop:
+        ps = [optimizer.ask() for __ in range(batch_size)]
+        xs = np.stack([p.value for p in ps])
+        es, meta = _cost_function(xs, ansatz_isa, operator_isa, estimator)
+        for p, e in zip(ps, es):
+            optimizer.tell(p, -1 * e)  # !!!
+            records.append((p.value, e, meta, i))
+        loop.propose(None, es.max())
+
+    all_x = np.stack([x for x, _, _, _ in records])
+    all_e = np.array([e for _, e, _, _ in records])
+    results = [{"energy": float(e), "batch": i, **m} for _, e, m, i in records]
     j = all_e.argmax()
     return (all_x[j], all_e[j]), (all_x, all_e), results

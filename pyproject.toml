@@ -16,7 +16,7 @@
         "tqdm>=4.67.1",
         "qiskit-ibm-runtime==0.35.0",
         "scipy==1.15.1",
-        "nevergrad>=1.0.8",
+        "scikit-learn>=1.6.1",
 ]
     description = ""
     license = { file = "LICENSE" }

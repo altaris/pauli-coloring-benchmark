@@ -21,7 +21,7 @@ from tqdm import tqdm
 from ..hamlib import hid_to_file_key, open_hamiltonian_file
 from ..io import load, save
 from ..qaoa import qaoa
-from ..qiskit import reorder_operator, to_evolution_gate
+from ..qiskit import reorder_operator, to_evolution_gate, trim_qc
 from ..utils import hash_dict
 from .consolidate import consolidate
 from .utils import jid_to_json_path
@@ -69,12 +69,13 @@ def _bench_one(
                 term_indices = load(order_file)["term_indices"].astype(int)
                 operator = reorder_operator(operator, term_indices)
             cost_qc = load(reorder_result.with_suffix(".qpy.gz"))
+            cost_qc, operator = trim_qc(cost_qc, operator)
 
             _qaoa = _qaoa_aer if mode == "aer" else _qaoa_ibmq
             (best_x, best_e), (all_x, all_e), results = _qaoa(
                 operator=operator,
                 cost_qc=cost_qc,
-                **qaoa_config,
+                qaoa_config=qaoa_config,
             )
 
             for r in results:
@@ -228,7 +229,12 @@ def benchmark(
                 # "max_n_batches": 10,
             }
             jid = hash_dict(  # unique simulation job identifier
-                {"row": dict(row), "trial": i, "qaoa_config": qaoa_config}
+                {
+                    "reordering_jid": row["jid"],
+                    "hid": row["hid"],
+                    "trial": i,
+                    "qaoa_config": qaoa_config,
+                }
             )
             output_file = jid_to_json_path(jid, output_dir)
             if output_file.is_file() and output_file.stat().st_size > 0:
@@ -249,7 +255,7 @@ def benchmark(
     executor = Parallel(
         n_jobs=n_jobs,
         prefer="processes",
-        timeout=3600 * 24,  # 24h
+        timeout=3600 * 24 if n_jobs > 1 else None,  # 24h
         verbose=1,
         backend="loky",
     )
