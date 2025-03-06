@@ -49,8 +49,8 @@ def _bench_one(
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     reorder_result = Path(reorder_result)
+    reordering_jid = reorder_result.stem
     ham_file, key = hid_to_file_key(hid, ham_dir)
-    rjid = reorder_result.stem
 
     try:
         lock_file = output_file.with_suffix(".lock")
@@ -77,12 +77,10 @@ def _bench_one(
                         "device": "GPU",
                         "cuStateVec_enable": True,
                         "blocking_enable": True,
-                        "blocking_qubits": 23,  # log2(smallest gpu mem / 256) - 4
+                        "blocking_qubits": 23,
+                        # ↑ log2(smallest gpu mem / 256) - 4
                     },
-                    "run_options": {
-                        "seed": 0,
-                        "shots": qaoa_config.get("n_shots", 1024),
-                    },
+                    "run_options": {"seed": 0, "shots": 1024},
                 }
             )
             (best_x, best_e), (all_x, all_e), results = qaoa(
@@ -90,22 +88,23 @@ def _bench_one(
                 backend=backend,
                 estimator=estimator,
                 cost_qc=cost_qc,
-                n_qaoa_steps=qaoa_config.get("n_qaoa_steps", 1),
-                pm_optimization_level=qaoa_config.get(
-                    "pm_optimization_level", 0
-                ),
-                max_iter=qaoa_config.get("max_iter", 1000),
+                **qaoa_config,
             )
-
             for r in results:
-                r.update({"hid": hid, "reordering_jid": rjid})
+                r.update(
+                    {
+                        "hid": hid,
+                        "backend": backend.name,
+                        "reordering_jid": reordering_jid,
+                    }
+                )
             save(results, output_file)
             save(
                 {
                     "all_energies": all_e,
                     "all_parameters": all_x,
-                    "best_energy": np.array([best_e]),
-                    # ↑ hdf5py crashes for scalar entries lmao
+                    "best_energy": np.array([best_e], dtype=float),
+                    # ↑ hdf5py crashes for scalar entries (╯°□°)╯︵ ┻━┻
                     "best_parameters": best_x,
                 },
                 output_file.with_suffix(".hdf5"),
@@ -115,7 +114,10 @@ def _bench_one(
         pass
     except Exception as e:
         logging.error(
-            "Error while processing hid={}, rjid={}:\n{}", hid, rjid, e
+            "Error while processing hid={}, rjid={}:\n{}",
+            hid,
+            reordering_jid,
+            e,
         )
 
 
@@ -159,9 +161,10 @@ def benchmark(
         for i in range(n_trials):
             qaoa_config = {
                 "n_qaoa_steps": n_qaoa_steps,
-                "n_shots": 1024,
-                "pm_optimization_level": 3,
-                "max_iter": 128,
+                # "n_shots": 1024,
+                # "pm_optimization_level": 3,
+                # "batch_size": 16,
+                # "max_n_batches": 10,
             }
             jid = hash_dict(  # unique simulation job identifier
                 {"row": dict(row), "trial": i, "qaoa_config": qaoa_config}

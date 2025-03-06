@@ -1,17 +1,19 @@
 """Implementation of the QAOA algorithm."""
 
-from functools import partial
+import nevergrad as ng
 import numpy as np
 from loguru import logger as logging
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import QAOAAnsatz
+from qiskit.primitives import PrimitiveJob
 from qiskit.providers import BackendV2 as Backend
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_aer.primitives import EstimatorV2 as AerEstimator
 from qiskit_ibm_runtime import EstimatorV2 as IBMEstimator
-from qiskit_ibm_runtime import RuntimeJobV2 as RuntimeJob
-import nevergrad as ng
+from qiskit_ibm_runtime import RuntimeJobV2 as IBMRuntimeJob
+
+from pcb.utils import EarlyStoppingLoop
 
 
 def _cost_function(
@@ -19,36 +21,33 @@ def _cost_function(
     ansatz: QuantumCircuit,
     operator: SparsePauliOp,
     estimator: IBMEstimator | AerEstimator,
-    jobs: list[tuple[np.ndarray, RuntimeJob]] | None = None,
-) -> np.float64:
+) -> tuple[np.ndarray, dict]:
     """
-    Function to minimize in the `scipy.optimize.minimize` routine. It returns
-    the energy **times $-1$** of the operator given an ansatz and a set of
-    parameters.  Therefore, minimizing this function will find variational
-    parameters that produce a **high energy** state.
+    Evaluates a set of parameters for the QAOA ansatz. Returns an array of all
+    resulting energies and a dictionary containing data about the job submitted
+    to IBMQ or Aer. See `_job_to_dict` for the structure of the dictionary.
 
-    If `jobs` is not `None`, it will append a `(parameters, job)` tuple to it.
-    `job` is a
-    [`RuntimeJobV2`](https://docs.quantum.ibm.com/api/qiskit-ibm-runtime/runtime-job-v2)
-    that handles the actual IBM Quantum Runtime job.
+    Args:
+        parameters (np.ndarray): A `(N, n_qaoa_params)` array of real parameters
+        ansatz (QuantumCircuit):
+        operator (SparsePauliOp):
+        estimator (IBMEstimator | AerEstimator):
     """
-    pub = (ansatz, [operator], [parameters])
-    job = estimator.run(pubs=[pub])
-    energy: np.float64 = job.result()[0].data.evs[0]
-    if jobs is not None:
-        jobs.append((parameters, job))
-        logging.debug("Iteration: {}, energy: {}", len(jobs), energy.round(5))
-    return -energy
+    if parameters.ndim != 2:
+        raise ValueError(
+            f"Parameters must be a 2D array, got shape: {parameters.shape}"
+        )
+    pubs = [(ansatz, [operator], [x]) for x in parameters]
+    job = estimator.run(pubs=pubs)
+    results = job.result()
+    es = np.array([r.data.evs[0] for r in results])
+    return es, _job_to_dict(job)
 
 
-def _job_to_dict(job: RuntimeJob) -> dict:
-    data = job.result()[0].data
+def _job_to_dict(job: IBMRuntimeJob | PrimitiveJob) -> dict:
     return {
-        "energy": float(data.evs[0]),
-        "std": float(data.stds[0]),
-        "job_id": job.job_id(),
-        "session_id": getattr(job, "session_id", None),
-        # ↑ doesn't exist for sims.
+        "ibmq_jid": job.job_id(),
+        "ibmq_sid": getattr(job, "session_id", None),
     }
 
 
@@ -57,9 +56,11 @@ def qaoa(
     backend: Backend,
     estimator: IBMEstimator | AerEstimator,
     cost_qc: QuantumCircuit | None = None,
-    n_qaoa_steps: int = 1,
-    pm_optimization_level: int = 0,
-    max_iter: int = 1000,
+    n_qaoa_steps: int = 2,
+    pm_optimization_level: int = 3,
+    batch_size: int = 16,
+    max_n_batches: int = 10,
+    patience: int = 3,
 ) -> tuple[
     tuple[np.ndarray, float], tuple[np.ndarray, np.ndarray], list[dict]
 ]:
@@ -68,9 +69,22 @@ def qaoa(
     of the cost operator can be given explicitely as a `QuantumCircuit`.
     Otherwise, it is automatically Trotterized.
 
+    This method submits PUBs in batches, meaning that at every iteration,
+    `batch_size` parameters are tested.
+
     Warning:
         This method tries to *MAXIMIZE* the energy of the operator. If you want
         to minimize, flip the sign of the weights in `operator`.
+
+    Args:
+        operator (SparsePauliOp): The operator whose energy to maximize
+        backend (Backend):
+        estimator (IBMEstimator | AerEstimator):
+        cost_qc (QuantumCircuit | None, optional):
+        n_qaoa_steps (int, optional):
+        pm_optimization_level (int, optional):
+        batch_size (int, optional):
+        max_n_batches (int, optional):
 
     Returns:
         1. A tuple containing the optimal parameters and the optimal energy.
@@ -78,33 +92,29 @@ def qaoa(
            array of all resulting energies.
         3. A list of dict decribing the results of each job. An element looks
            like:
-        {
-            "energy": -0.006450488764709524,
-            "std": 0.0,
-            "job_id": "3c94c73c-385b-4e71-8675-e3e1ad76aa4e",
-            "session_id": None,
-            "step": 1,
-            "n_qaoa_steps": 2,
-            "pm_optimization_level": 3,
-            "backend": "fake_kawasaki"
-        }
 
+            {
+                "energy": 0.006450488764709524,
+                "ibmq_job_id": "3c94c73c-385b-4e71-8675-e3e1ad76aa4e",
+                "ibmq_session_id": "cz4h80039f40008scarg",
+                "batch": 3,
+            }
     """
-    pm = generate_preset_pass_manager(
-        target=backend.target, optimization_level=pm_optimization_level
-    )
     ansatz = QAOAAnsatz(
         cost_operator=cost_qc if cost_qc is not None else operator,
         reps=n_qaoa_steps,
     )
+    pm = generate_preset_pass_manager(
+        target=backend.target, optimization_level=pm_optimization_level
+    )
     ansatz_isa = pm.run(ansatz)
+    operator_isa = operator.apply_layout(ansatz_isa.layout)
     logging.debug(
         "ISA ansatz depth/size: {}/{}",
         ansatz_isa.depth(),
         ansatz_isa.size(),
     )
-    operator_isa = operator.apply_layout(ansatz_isa.layout)
-    _jrs: list[tuple[np.ndarray, RuntimeJob]] = []
+
     parametrization = ng.p.Array(
         shape=(len(ansatz_isa.parameters),),
         lower=0,
@@ -114,37 +124,26 @@ def qaoa(
         ),
     )
     optimizer = ng.optimizers.NGOpt(
-        parametrization=parametrization, budget=max_iter
+        parametrization=parametrization,
+        budget=max_n_batches * batch_size,
+        num_workers=batch_size,  # to make batch_size asks concurrently
     )
-    optimizer.minimize(
-        partial(
-            _cost_function,
-            ansatz=ansatz_isa,
-            operator=operator_isa,
-            estimator=estimator,
-            jobs=_jrs,
-        ),
-        verbosity=2,
+
+    loop = EarlyStoppingLoop(
+        max_iter=max_n_batches, patience=patience, delta=1e-2, mode="max"
     )
-    best_x, best_e = _jrs[0][0], _jrs[0][1].result()[0].data.evs[0]
-    for x, j in _jrs[1:]:
-        e = j.result()[0].data.evs[0]
-        if e > best_e:  # Energy maximization
-            best_x, best_e = x, e
-    all_x = np.stack([x for x, _ in _jrs])
-    all_e = np.array([j.result()[0].data.evs[0] for _, j in _jrs])
+    records: list[tuple[np.ndarray, np.float64, dict, int]] = []
+    for i in loop:
+        ps = [optimizer.ask() for __ in range(batch_size)]
+        xs = np.stack([p.value for p in ps])
+        es, meta = _cost_function(xs, ansatz_isa, operator_isa, estimator)
+        for p, e in zip(ps, es):
+            optimizer.tell(p, -1 * e)  # !!!
+            records.append((p.value, e, meta, i))
+        loop.propose(None, es.max())
 
-    job_results = []
-    for i, (_, j) in enumerate(_jrs):
-        data = _job_to_dict(j)
-        data.update(
-            {
-                "step": i + 1,
-                "n_qaoa_steps": n_qaoa_steps,
-                "pm_optimization_level": pm_optimization_level,
-                "backend": backend.name,
-            }
-        )
-        job_results.append(data)
-
-    return (best_x, best_e), (all_x, all_e), job_results
+    all_x = np.stack([x for x, _, _, _ in records])
+    all_e = np.array([e for _, e, _, _ in records])
+    results = [{"energy": float(e), "batch": i, **m} for _, e, m, i in records]
+    j = all_e.argmax()
+    return (all_x[j], all_e[j]), (all_x, all_e), results

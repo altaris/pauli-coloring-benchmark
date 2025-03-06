@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import filelock
+import numpy as np
 import pandas as pd
 from loguru import logger as logging
 from qiskit.quantum_info import SparsePauliOp
@@ -16,6 +17,7 @@ from ..qaoa import qaoa
 from ..qiskit import reorder_operator, to_evolution_gate
 
 
+# TODO: deduplicate with `pcb.benchmark.simulate._bench_one`
 def _bench_one(
     hid: str,
     ham_dir: str | Path,
@@ -41,8 +43,8 @@ def _bench_one(
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     reorder_result = Path(reorder_result)
+    reordering_jid = reorder_result.name
     ham_file, key = hid_to_file_key(hid, ham_dir)
-    rjid = reorder_result.name
 
     try:
         lock_file = output_file.with_suffix(".lock")
@@ -84,21 +86,23 @@ def _bench_one(
                     backend=backend,
                     estimator=estimator,
                     cost_qc=cost_qc,
-                    n_qaoa_steps=qaoa_config.get("n_qaoa_steps", 1),
-                    pm_optimization_level=qaoa_config.get(
-                        "pm_optimization_level", 0
-                    ),
-                    max_iter=qaoa_config.get("max_iter", 1000),
+                    **qaoa_config,
                 )
-
             for r in results:
-                r.update({"hid": hid, "reordering_jid": rjid})
+                r.update(
+                    {
+                        "hid": hid,
+                        "backend": backend.name,
+                        "reordering_jid": reordering_jid,
+                    }
+                )
             save(results, output_file)
             save(
                 {
                     "all_energies": all_e,
                     "all_parameters": all_x,
-                    "best_energy": best_e,
+                    "best_energy": np.array([best_e], dtype=float),
+                    # ↑ hdf5py crashes for scalar entries (╯°□°)╯︵ ┻━┻
                     "best_parameters": best_x,
                 },
                 output_file.with_suffix(".hdf5"),
@@ -108,7 +112,10 @@ def _bench_one(
         pass
     except Exception as e:
         logging.error(
-            "Error while processing hid={}, rjid={}:\n{}", hid, rjid, e
+            "Error while processing hid={}, rjid={}:\n{}",
+            hid,
+            reordering_jid,
+            e,
         )
 
 
