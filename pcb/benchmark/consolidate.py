@@ -50,7 +50,8 @@ def consolidate(jobs_dir: str | Path) -> pd.DataFrame:
         logging.warning("No valid JSON files found in {}", jobs_dir)
         return pd.DataFrame()
     results = pd.DataFrame(rows)
-    results.set_index("hid", inplace=True)
+    if "hid" in results.columns:
+        results.set_index("hid", inplace=True)
     logging.info(
         "Consolidated {} rows from {} jobs",
         len(results),
