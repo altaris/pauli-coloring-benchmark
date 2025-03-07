@@ -51,12 +51,17 @@ def build_pub(
     x = data["best_parameters"]
     qc = load(jid_to_json_path(rjid, REORDER_PATH).with_suffix(".qpy.gz"))
     qc, _ = trim_qc(qc)
-    ansatz = QAOAAnsatz(cost_operator=qc, reps=n_qaoa_steps)
-    ansatz.measure_all()
-    pm = generate_preset_pass_manager(
-        target=backend.target, optimization_level=3
-    )
-    ansatz_isa = pm.run(ansatz)
+    p = jid_to_json_path(sjid, SMPL_PATH).with_suffix(".qpy.gz")
+    if p.is_file() and p.stat().st_size > 0:
+        ansatz_isa = load(p)
+    else:
+        ansatz = QAOAAnsatz(cost_operator=qc, reps=n_qaoa_steps)
+        ansatz.measure_all()
+        pm = generate_preset_pass_manager(
+            target=backend.target, optimization_level=3
+        )
+        ansatz_isa = pm.run(ansatz)
+        save(ansatz_isa, p)
     return (ansatz_isa, [x])
 
 
