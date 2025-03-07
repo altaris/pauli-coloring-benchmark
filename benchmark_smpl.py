@@ -33,7 +33,7 @@ SIM_PATH = Path("out/run.aer.hm=p,hc=m,max")
 SMPL_PATH = Path("out/smpl.hm=p,hc=m,max")
 
 N_SHOTS = 1024
-BATCH_SIZE = 2048
+BATCH_SIZE = 1024
 # Number of execution (one shot on one qc.) in a job: BATCH_SIZE * N_SHOTS
 # Max allowed: 5M (https://qiskit.qotlabs.org/guides/job-limits#maximum-executions)
 
