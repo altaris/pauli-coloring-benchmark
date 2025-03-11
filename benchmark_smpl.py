@@ -41,20 +41,29 @@ Pub: TypeAlias = tuple[QuantumCircuit, list[np.ndarray]]
 
 
 def build_pub(
-    rjid: str, sjid: str, backend: Backend, n_qaoa_steps: int = 2
+    reordering_jid: str,
+    simulation_jid: str,
+    backend: Backend,
+    n_qaoa_steps: int = 2,
 ) -> Pub:
     """
     Creates a submittable PUB from a reordering job ID (to load the Trotterized
     cost operator) and a simulation job ID (to get the optimal QAOA parameters).
     """
-    data = load(jid_to_json_path(sjid, SIM_PATH).with_suffix(".hdf5"))
+    data = load(
+        jid_to_json_path(simulation_jid, SIM_PATH).with_suffix(".hdf5")
+    )
     x = data["best_parameters"]
-    qc = load(jid_to_json_path(rjid, REORDER_PATH).with_suffix(".qpy.gz"))
-    qc, _ = trim_qc(qc)
-    p = jid_to_json_path(sjid, SMPL_PATH).with_suffix(".qpy.gz")
+    p = jid_to_json_path(simulation_jid, SMPL_PATH).with_suffix(".qpy.gz")
     if p.is_file() and p.stat().st_size > 0:
         ansatz_isa = load(p)
     else:
+        qc = load(
+            jid_to_json_path(reordering_jid, REORDER_PATH).with_suffix(
+                ".qpy.gz"
+            )
+        )
+        qc, _ = trim_qc(qc)
         ansatz = QAOAAnsatz(cost_operator=qc, reps=n_qaoa_steps)
         ansatz.measure_all()
         pm = generate_preset_pass_manager(
@@ -75,20 +84,23 @@ def jobs(
     This generator skips jobs that have already been ran.
     """
     for _, r in df.iterrows():
-        jid = hash_dict(
-            {"reordering_jid": r["reordering_jid"], "simulation_jid": r["jid"]}
+        sampling_jid = hash_dict(
+            {
+                "reordering_jid": r["reordering_jid"],
+                "simulation_jid": r["simulation_jid"],
+            }
         )
-        output_file = jid_to_json_path(jid, SMPL_PATH)
+        output_file = jid_to_json_path(sampling_jid, SMPL_PATH)
         if output_file.is_file() and output_file.stat().st_size > 0:
-            # logging.debug("Skipping job {} (already ran)", jid)
+            # logging.debug("Skipping job {} (already ran)", sampling_jid)
             continue
-        pub = build_pub(r["reordering_jid"], r["jid"], backend)
+        pub = build_pub(r["reordering_jid"], r["simulation_jid"], backend)
         meta = {
             "hid": r["hid"],
             "n_shots": N_SHOTS,
             "reordering_jid": r["reordering_jid"],
-            "sampling_jid": jid,
-            "simulation_jid": r["jid"],
+            "sampling_jid": sampling_jid,
+            "simulation_jid": r["simulation_jid"],
         }
         yield (meta, pub)
 
@@ -100,6 +112,7 @@ def load_reorder_df() -> pd.DataFrame:
         df = pd.read_sql(query, db)
     df.dropna(inplace=True)
     df.drop(["hid"], axis=1, inplace=True)
+    df.rename({"jid": "reordering_jid"}, axis=1, inplace=True)
     df["time"] = df["reordering_time"] + df["synthesis_time"]
     df.drop(["reordering_time", "synthesis_time"], axis=1, inplace=True)
     logging.debug("Loaded reordering benchmark results: {} rows", len(df))
@@ -115,12 +128,21 @@ def load_sim_df() -> pd.DataFrame:
     with sqlite3.connect(SIM_PATH / "results.db") as db:
         df = pd.read_sql(query, db)
     df.drop(
-        ["ibmq_jid", "ibmq_sid", "backend"],
+        ["ibmq_jid", "ibmq_sid", "backend", "step"],
         axis=1,
         inplace=True,
     )
+    df.rename({"jid": "simulation_jid"}, axis=1, inplace=True)
     df.dropna(inplace=True)
     logging.debug("Loaded simulation benchmark results: {} rows", len(df))
+    df = df.groupby(["simulation_jid"]).max().reset_index()
+    logging.debug(
+        (
+            "Selected optimization iterations with highest energy, "
+            "left with {} rows"
+        ),
+        len(df),
+    )
     return df
 
 
@@ -133,7 +155,9 @@ def process_result(meta: dict, result: SamplerPubResult) -> None:
         Wouldn't it be nice to compute the cut values here too?
     """
     counts = result.data.meas.get_counts()
-    df = pd.DataFrame({"string": counts.keys(), "count": counts.values()})
+    df = pd.DataFrame(
+        {"string": counts.keys(), "count": counts.values(), "hid": meta["hid"]}
+    )
     output_file = jid_to_json_path(meta["sampling_jid"], SMPL_PATH)
     save(meta, output_file)
     save(df, output_file.with_suffix(".csv"))
@@ -142,25 +166,17 @@ def process_result(meta: dict, result: SamplerPubResult) -> None:
 def main() -> None:
     """Main function (duh)"""
 
-    if BATCH_SIZE * N_SHOTS > 5_000_000:
-        raise ValueError(
-            "The number of executions per job is too high (max is 5M). "
-            "See also https://qiskit.qotlabs.org/guides/job-limits#maximum-executions"
-        )
-
     # =========================================================================
     # LOAD AND JOIN SIMULATION AND REORDERING BENCHMARK RESULTS
     # =========================================================================
 
     rdf, sdf = load_reorder_df(), load_sim_df()
-    rdf, sdf = rdf.set_index("jid"), sdf.set_index("reordering_jid")
+    rdf, sdf = rdf.set_index("reordering_jid"), sdf.set_index("reordering_jid")
     df = sdf.join(rdf, how="inner")
     df.reset_index(inplace=True)
+    if "index" in df.columns:
+        df.rename({"index": "reordering_jid"}, axis=1, inplace=True)
     logging.debug("Joined reordering and simulation result dataframes")
-    df = df.groupby(["hid", "method"]).last().reset_index()
-    logging.debug(
-        "Selected last optimization iterations, left with {} rows", len(df)
-    )
 
     # =========================================================================
     # ONLY KEEP HIDs WHERE ALL METHODS HAVE BEEN RAN
@@ -170,8 +186,8 @@ def main() -> None:
     for hid in df["hid"].unique():
         methods = df[df["hid"] == hid]["method"].unique()
         if len(methods) == n_methods:
-            keep |= set(df[df["hid"] == hid]["jid"].unique())
-    df = df[df["jid"].isin(keep)]
+            keep |= set(df[df["hid"] == hid]["simulation_jid"].unique())
+    df = df[df["simulation_jid"].isin(keep)]
     logging.info(
         (
             "Keeping HIDs where all reordering methods have been simulated: "
