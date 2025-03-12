@@ -1,6 +1,6 @@
 """
 Kills every
-- `/lcc/.venv/bin/python3` process listed by `nvidia-smi`,
+- `/.venv/bin/python3` process listed by `nvidia-smi`,
 - every `/lcc/.venv/bin/python3 -m lcc` process listed by `ps`.
 - every `pt_main_thread` process listed by `ps`.
 """
@@ -35,9 +35,7 @@ if __name__ == "__main__":
 
     raw = subprocess.check_output(["nvidia-smi"])
     pids = []
-    r = re.compile(
-        r"\|\s+\d\s+N/A\s+N/A\s+(\d+)\s+C.*benchmark/.venv/bin/python3"
-    )
+    r = re.compile(r"\|\s+\d\s+N/A\s+N/A\s+(\d+)\s+C.*/.venv/bin/python3")
     for line in raw.decode("utf-8").split("\n"):
         if m := re.search(r, line):
             pids.append(m.group(1))
