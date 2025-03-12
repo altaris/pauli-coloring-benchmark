@@ -1,0 +1,19 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Pauli Coloring Benchmark
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Ho Thanh
+    given-names: Cédric
+    orcid: "https://orcid.org/0000-0003-4476-2034"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.14934437
+repository-code: "https://github.com/altaris/pauli-coloring-benchmark"
+url: "https://github.com/altaris/pauli-coloring-benchmark"
+license: MIT
+version: 1.0.0
+date-released: "2025-03-12"
