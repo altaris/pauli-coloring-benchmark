@@ -56,7 +56,7 @@ def invert_dict(dct: dict[_A, _B]) -> dict[_B, list[_A]]:
     return res
 
 
-def is_3sat(gate: PauliEvolutionGate) -> bool:
+def is_3sat(gate_or_op: PauliEvolutionGate | SparsePauliOp) -> bool:
     """
     A 3SAT Hamiltonian must
     * only contain terms of the form $Z_i$, $Z_i Z_j$, or $Z_i Z_j Z_k$; and
@@ -65,9 +65,12 @@ def is_3sat(gate: PauliEvolutionGate) -> bool:
     This is a heuristic check, and probably not correct (doesn't exclude
     certain non-3SAT Hamiltonians).
     """
-    assert isinstance(gate.operator, SparsePauliOp)  # for typechecking
+    if isinstance(gate_or_op, PauliEvolutionGate):
+        assert isinstance(gate_or_op.operator, SparsePauliOp)
+        gate_or_op = gate_or_op.operator
+    assert isinstance(gate_or_op, SparsePauliOp)  # for typechecking
     simplices: set[tuple[int, ...]] = set()
-    for pstr, qs, _ in gate.operator.to_sparse_list():
+    for pstr, qs, _ in gate_or_op.to_sparse_list():
         if not (set(list(pstr)) == {"Z"} and len(pstr) in [1, 2, 3]):
             return False
         qs = tuple(sorted(qs))
@@ -77,16 +80,20 @@ def is_3sat(gate: PauliEvolutionGate) -> bool:
     return True
 
 
-def is_ising(gate: PauliEvolutionGate, transverse_ok: bool = False) -> bool:
+def is_ising(
+    gate_or_op: PauliEvolutionGate | SparsePauliOp, transverse_ok: bool = False
+) -> bool:
     """
     Wether the Hamiltonian underpinning the evolution gate is an Ising
     Hamiltonian. Transverse field Ising Hamiltonians can also be included.
     """
-    assert isinstance(gate.operator, SparsePauliOp)
+    if isinstance(gate_or_op, PauliEvolutionGate):
+        assert isinstance(gate_or_op.operator, SparsePauliOp)
+        gate_or_op = gate_or_op.operator
     edges, acceptable_strs = set(), {"Z", "ZZ"}
     if transverse_ok:
         acceptable_strs.add("X")
-    for pauli_str, qubits, *_ in gate.operator.to_sparse_list():
+    for pauli_str, qubits, *_ in gate_or_op.to_sparse_list():
         if pauli_str not in acceptable_strs:
             return False
         qubits = tuple(sorted(qubits))
